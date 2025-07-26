@@ -55,7 +55,7 @@ require("init")
 Retrieve and print all available assembly images in the application.
 
 ```lua
-local images = Il2Cpp.Image:From()
+local images = Il2Cpp.Image()
 for _, img in ipairs(images) do
     print("Image: " .. img:GetName())
 end
@@ -66,7 +66,7 @@ end
 Find a class in an assembly and inspect a specific method, including its parameters and return type.
 
 ```lua
-local assembly = Il2Cpp.Image:From("Assembly-CSharp.dll")
+local assembly = Il2Cpp.Image("Assembly-CSharp.dll")
 if assembly then
     local playerScript = assembly:Class(nil, "PlayerScript")
     if playerScript then
@@ -87,7 +87,7 @@ end
 Locate all instances of a class in memory and print their addresses.
 
 ```lua
-local assembly = Il2Cpp.Image:From("Assembly-CSharp.dll")
+local assembly = Il2Cpp.Image("Assembly-CSharp.dll")
 if assembly then
     local playerScript = assembly:Class(nil, "PlayerScript")
     if playerScript then
@@ -104,7 +104,7 @@ end
 Retrieve a field from a class and get or set its value for a specific object instance.
 
 ```lua
-local assembly = Il2Cpp.Image:From("Assembly-CSharp.dll")
+local assembly = Il2Cpp.Image("Assembly-CSharp.dll")
 if assembly then
     local playerScript = assembly:Class(nil, "PlayerScript")
     if playerScript then
@@ -126,7 +126,7 @@ end
 List all types (classes) within a specific image.
 
 ```lua
-local project = Il2Cpp.Image:From("Project.Game")
+local project = Il2Cpp.Image("Project.Game")
 if project then
     local types = project:GetTypes()
     for _, type in ipairs(types) do
@@ -140,7 +140,6 @@ end
 - **GameGuardian**: Required for memory manipulation and search operations.
 - **Android Device**: Compatible with Android applications using Il2Cpp.
 - **Lua Environment**: GameGuardian's Lua scripting environment.
-- **Dependencies**: Requires `universalsearcher.lua`, `androidinfo.lua`, and `Version.lua` for full functionality.
 
 ## Notes
 
@@ -148,6 +147,7 @@ end
 - Ensure proper memory ranges are set in GameGuardian for accurate object searching (`Object.lua`).
 - Handle 64-bit architecture considerations, as the library adjusts pointer sizes and memory operations accordingly.
 - Use with caution, as improper memory manipulation can crash the target application.
+- There are many methods that are not yet perfect.
 
 ## Contributing
 
