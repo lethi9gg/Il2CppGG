@@ -1,7 +1,7 @@
 local buildLT9, script_build, script_cache, requireold = {
    name = "Il2CppGG",
    input = "init",
-   output = "build/Il2CppGG.lua"
+   output = "Il2CppGG.lua"
 }, {}, {}, require
 function require(Name)
     local mod = package.loaded[Name]
