@@ -4,6 +4,8 @@ A powerful Il2Cpp inspection and manipulation toolkit for GameGuardian, written 
 
 ![GameGuardian](https://img.shields.io/badge/GameGuardian-Scripting-orange) ![Lua](https://img.shields.io/badge/Lua-5.2-blue) ![Il2Cpp](https://img.shields.io/badge/Il2Cpp-Reverse%20Engineering-green) ![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen)
 
+[![GameGuardian](https://img.shields.io/badge/GameGuardian-7c36b1)](https://gameguardian.net/forum/files/file/3056-ggil2cpp)[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?&logo=telegram&logoColor=white)](https://t.me/lethi9gg)
+
 ## 📖 Description
 
 Il2CppGG is a comprehensive toolkit written in Lua for working with Il2Cpp structures within the GameGuardian environment. It provides a full-fledged API to parse and manipulate metadata, classes, methods, fields, types, and objects in memory.
