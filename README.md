@@ -8,7 +8,7 @@ A powerful Il2Cpp inspection and manipulation toolkit for GameGuardian, written 
 
 Il2CppGG is a comprehensive toolkit written in Lua for working with Il2Cpp structures within the GameGuardian environment. It provides a full-fledged API to parse and manipulate metadata, classes, methods, fields, types, and objects in memory.
 
-**Author**: ![LeThi9GG](https://github.com/lethi9gg)
+**Author**: [LeThi9GG](https://github.com/lethi9gg)
 
 ## ✨ Features
 
@@ -29,7 +29,7 @@ Il2CppGG is a comprehensive toolkit written in Lua for working with Il2Cpp struc
 
 ## 🚀 Installation
 
-1. Download the ![build/Il2CppGG.lua](https://github.com/lethi9gg/Il2CppGG/blob/main/build/Il2CppGG.lua) file from the repository
+1. Download the [build/Il2CppGG.lua](https://github.com/lethi9gg/Il2CppGG/blob/main/build/Il2CppGG.lua) file from the repository
 2. Place it in GameGuardian's scripts folder
 3. In GameGuardian, load the `Il2CppGG.lua` script
 
