@@ -33,6 +33,10 @@ Il2CppGG is a comprehensive toolkit written in Lua for working with Il2Cpp struc
 2. Place it in GameGuardian's scripts folder
 3. In GameGuardian, load the `Il2CppGG.lua` script
 
+## ⚒️ Build
+
+- In GameGuardian, run the `buildLT9.lua` script --> build/Il2CppGG.lua
+
 ## 📂 Project Structure
 
 ```
@@ -64,7 +68,7 @@ For general use, you only need the `build/Il2CppGG.lua` file. The other files ar
 The main module that handles initialization, versioning, and provides essential utilities.
 
 ```lua
-local Il2Cpp = require("Il2CppGG")()
+require("Il2CppGG")
 
 -- Check architecture
 print("64-bit:", Il2Cpp.x64)
