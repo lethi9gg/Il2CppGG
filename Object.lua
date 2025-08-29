@@ -74,10 +74,10 @@ local ObjectApi = {
     
     ---@param self ObjectApi
     ---@param ClassesInfo ClassInfo[]
-    Find = function(self, ClassesInfo)
+    From = function(self, ClassesInfo)
         local Objects = {}
         for j = 1, #ClassesInfo do
-            local FindResult = self:FindObjects(ClassesInfo[j].ClassAddress)
+            local FindResult = self:FindObjects(ClassesInfo[j].address)
             table.move(FindResult, 1, #FindResult, #Objects + 1, Objects)
         end
         return Objects
@@ -104,4 +104,4 @@ local ObjectApi = {
     end,
 }
 
-return ObjectApi
+return setmetatable(ObjectApi, {__call = ObjectApi.From})
