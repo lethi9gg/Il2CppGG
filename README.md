@@ -587,6 +587,6 @@ This project is licensed for educational and research purposes. Please respect t
 
 ---
 
-All documentation about the module is available on the [wiki](../../wiki/)
+## All documentation about the module is available on the [wiki](../../wiki/)
 
 ---
