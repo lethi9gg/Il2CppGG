@@ -1,5 +1,10 @@
+---@class Image
+---Module for handling Il2Cpp image operations and metadata
 local Image = {}
 
+---Create an Image object from name or get all images
+-- @param name string|nil Image name to search for (optional)
+-- @return table Image object or table of all images
 function Image:From(name)
     if not self.__cache then
         if not Il2Cpp.imageSize then
@@ -38,38 +43,52 @@ function Image:From(name)
     end
 end
 
--- Lấy tên image, kiểu "nickname" của image
+---Get the name of an image
+-- @param image table The image object
+-- @return string Image name
 function Image.GetName(image)
     return image.name
 end
 
--- Lấy tên file của image, như "địa chỉ nhà" của image
+---Get the file name of an image
+-- @param image table The image object
+-- @return string Image file name
 function Image.GetFileName(image)
     return image.name
 end
 
--- Lấy assembly của image, tìm "gia đình" của image
+---Get the assembly of an image
+-- @param image table The image object
+-- @return number Assembly pointer
 function Image.GetAssembly(image)
     return image.assembly
 end
 
--- Lấy entry point, kiểu "cửa chính" của image
+---Get the entry point of an image
+-- @param image table The image object
+-- @return table|nil Method object if entry point exists, nil otherwise
 function Image.GetEntryPoint(image)
     local method = Il2Cpp.il2cpp_image_get_entry_point(image)
     return method ~= 0 and Il2Cpp.MethodInfo(method) or nil
 end
 
--- Lấy corlib image, image "ông trùm" của hệ thống
+---Get the corlib image
+-- @return table Corlib image object
 function Image.GetCorlib()
     return Il2Cpp.il2cpp_get_corlib()
 end
 
--- Lấy số lượng type trong image, đếm "dân số" class
+---Get the number of types in an image
+-- @param image table The image object
+-- @return number Number of types
 function Image.GetNumTypes(image)
     return image.typeCount
 end
 
--- Lấy class theo index, lấy "cư dân" thứ i
+---Get a type by index from an image
+-- @param image table The image object
+-- @param index number Type index
+-- @return table|nil Class object if found, nil otherwise
 function Image.GetType(image, index)
     if index >= image.typeCount then
         return nil
@@ -78,7 +97,10 @@ function Image.GetType(image, index)
     return handle ~= 0 and Il2Cpp.Class(handle) or nil
 end
 
--- Lấy danh sách type, gom hết "dân chúng" trong image
+---Get all types from an image
+-- @param image table The image object
+-- @param exportedOnly boolean Whether to return only exported types
+-- @return table Array of class objects
 function Image.GetTypes(image, exportedOnly)
     local types = {}
     for i = 0, image.typeCount - 1 do
@@ -92,7 +114,9 @@ function Image.GetTypes(image, exportedOnly)
     return types
 end
 
--- Check type có phải exported, kiểu "public figure" không
+---Check if a type is exported
+-- @param type table The class object
+-- @return boolean True if the type is exported
 function Image.IsExported(type)
     local flags = Class.GetFlags(type)
     local visibility = bit32.band(flags, 0x0007) -- TYPE_ATTRIBUTE_VISIBILITY_MASK
@@ -105,7 +129,11 @@ function Image.IsExported(type)
     return false
 end
 
--- Tìm class theo namespace và name, như "search Google" trong image
+---Find a class by namespace and name in an image
+-- @param image table The image object
+-- @param namespace string Namespace of the class
+-- @param name string Name of the class
+-- @return table|nil Class object if found, nil otherwise
 function Image.Class(image, namespace, name)
     local key = (namespace or "") .. "." .. name
     if not image.nameToClassHashTable or image.typeCount > image.countHashTable then
@@ -117,13 +145,17 @@ function Image.Class(image, namespace, name)
     return Il2Cpp.Class(image.nameToClassHashTable[key])
 end
 
--- Tìm class theo thông tin parse, kiểu "search pro" với nested type
+---Find a class from type name parse info
+-- @param image table The image object
+-- @param parseInfo table Parsed type information
+-- @param ignoreCase boolean Whether to ignore case when matching names
+-- @return table|nil Class object if found, nil otherwise
 function Image.FromTypeNameParseInfo(image, parseInfo, ignoreCase)
     local ns = parseInfo.ns or ""
     local name = parseInfo.name or ""
     local klass = Image.Class(image, ns, name)
     if not klass then
-        -- Tìm trong exported types nếu không thấy
+        -- Search in exported types if not found
         for i = 0, image.exportedTypeCount - 1 do
             local handle = Il2Cpp.il2cpp_assembly_get_exported_type_handle(image, i)
             if handle ~= 0 then
@@ -158,7 +190,8 @@ function Image.FromTypeNameParseInfo(image, parseInfo, ignoreCase)
     return klass
 end
 
--- Lấy executing image, tìm image đang "chạy show"
+---Get the executing image from the current stack
+-- @return table Executing image object
 function Image.GetExecutingImage()
     local stack = Il2Cpp.il2cpp_stack_frames()
     for _, frame in ipairs(stack) do
@@ -170,7 +203,8 @@ function Image.GetExecutingImage()
     return Image.GetCorlib()
 end
 
--- Lấy calling image, tìm image "gọi điện" cho executing image
+---Get the calling image from the current stack
+-- @return table Calling image object
 function Image.GetCallingImage()
     local stack = Il2Cpp.il2cpp_stack_frames()
     local foundFirst = false
@@ -186,17 +220,23 @@ function Image.GetCallingImage()
     return Image.GetCorlib()
 end
 
--- Check class có phải System.Type, kiểu "meta class"
+---Check if a class is System.Type
+-- @param klass table The class object
+-- @return boolean True if the class is System.Type
 function Image.IsSystemType(klass)
     return klass.namespaze == "System" and klass.name == "Type"
 end
 
--- Check class có phải System.Reflection.Assembly
+---Check if a class is System.Reflection.Assembly
+-- @param klass table The class object
+-- @return boolean True if the class is System.Reflection.Assembly
 function Image.IsSystemReflectionAssembly(klass)
     return klass.namespaze == "System.Reflection" and klass.name == "Assembly"
 end
 
--- Khởi tạo nameToClassHashTable, chuẩn bị "danh bạ" class
+---Initialize name to class hash table for an image
+-- @param image table The image object
+-- @param key string The key to search for
 function Image.InitNameToClassHashTable(image, key)
     if image.nameToClassHashTable[key] then
         return
@@ -209,25 +249,17 @@ function Image.InitNameToClassHashTable(image, key)
             image.nameToClassHashTable[ns .. "." .. name] = klass
             image.countHashTable = i + 1
             if image.nameToClassHashTable[key] then
-                --print((index - Il2Cpp.typeDef) / Il2Cpp.pointSize)
                 return klass
             end
-            --Image.AddNestedTypesToHashTable(image, klass, ns, name)
         end
     end
-    --[[
-    for i = 0, image.exportedTypeCount - 1 do
-        local handle = Il2Cpp.il2cpp_assembly_get_exported_type_handle(image, i)
-        if handle ~= 0 and not Il2Cpp.il2cpp_type_is_nested(handle) then
-            local ns, name = Il2Cpp.il2cpp_type_get_namespace_and_name(handle)
-            image.nameToClassHashTable[ns .. "." .. name] = handle
-            Image.AddNestedTypesToHashTable(image, handle, ns, name)
-        end
-    end
-    ]]
 end
 
--- Thêm nested types vào hash table, như "đăng ký hộ khẩu" cho nested class
+---Add nested types to hash table for an image
+-- @param image table The image object
+-- @param handle number Class handle
+-- @param namespaze string Namespace of the class
+-- @param parentName string Name of the parent class
 function Image.AddNestedTypesToHashTable(image, handle, namespaze, parentName)
     local iter = 0
     while true do
@@ -241,7 +273,8 @@ function Image.AddNestedTypesToHashTable(image, handle, namespaze, parentName)
     end
 end
 
--- Khởi tạo nested types, chuẩn bị "gia phả" cho nested class
+---Initialize nested types for an image
+-- @param image table The image object
 function Image.InitNestedTypes(image)
     for i = 0, image.typeCount - 1 do
         local handle = Il2Cpp.il2cpp_assembly_get_type_handle(image, i)
@@ -257,16 +290,24 @@ function Image.InitNestedTypes(image)
     end
 end
 
--- Lấy cached resource data, tìm "kho báu" của image
+---Get cached resource data from an image
+-- @param image table The image object
+-- @param name string Resource name
+-- @return any|nil Resource data if found, nil otherwise
 function Image.GetCachedResourceData(image, name)
-    -- Giả định Il2Cpp.il2cpp_get_cached_resource_data trả về dữ liệu
     local data = Il2Cpp.il2cpp_get_cached_resource_data(image, name)
     return data or nil
 end
 
--- Xóa cached resource data, dọn dẹp "kho báu"
+---Clear cached resource data
 function Image.ClearCachedResourceData()
     Il2Cpp.il2cpp_clear_cached_resource_data()
 end
 
-return setmetatable(Image, {__call = Image.From})
+return setmetatable(Image, {
+    ---Metatable call handler for Image
+    -- Allows Image to be called as a function
+    -- @param ... any Arguments passed to Image.From
+    -- @return table Image object or table of image objects
+    __call = Image.From
+})

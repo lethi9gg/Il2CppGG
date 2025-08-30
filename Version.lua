@@ -1,5 +1,10 @@
-local osUV = 0x11
+---@class VersionEngine
+---Module for detecting and handling Unity engine version compatibility with Il2Cpp
 
+---Compare two semantic version numbers
+-- @param v1 table First version table with major, minor, patch fields
+-- @param v2 table Second version table with major, minor, patch fields
+-- @return number -1 if v1 < v2, 1 if v1 > v2, 0 if equal
 local function compareVersions(v1, v2)
     if v1.major ~= v2.major then
         return v1.major < v2.major and -1 or 1
@@ -13,9 +18,12 @@ local function compareVersions(v1, v2)
     return 0
 end
 
+-- OS-specific Unity version string offset
+local osUV = 0x11
 
----@class VersionEngine
 local VersionEngine = {
+    ---@class ConstSemVer
+    ---Table of constant semantic version numbers for known Unity versions
     ConstSemVer = {
         ['2018_3'] = { major = 2018, minor = 3, patch = 0 },
         ['2019_4_21'] = { major = 2019, minor = 4, patch = 21 },
@@ -28,13 +36,25 @@ local VersionEngine = {
         ['2022_2'] = { major = 2022, minor = 2, patch = 0 },
         ['2022_3_41'] = { major = 2022, minor = 3, patch = 41 },
     },
+    
+    ---@class YearMapping
+    ---Mapping of Unity release years to Il2Cpp versions with conditional logic
     Year = {
+        ---Get Il2Cpp version for Unity 2017
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24)
         [2017] = function(self, unityVersion)
             return 24
         end,
+        ---Get Il2Cpp version for Unity 2018
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24 or 24.1)
         [2018] = function(self, unityVersion)
             return compareVersions(unityVersion, self.ConstSemVer['2018_3']) >= 0 and 24.1 or 24
         end,
+        ---Get Il2Cpp version for Unity 2019
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24.2 to 24.5)
         [2019] = function(self, unityVersion)
             local version = 24.2
             if compareVersions(unityVersion, self.ConstSemVer['2019_4_21']) >= 0 then
@@ -46,6 +66,9 @@ local VersionEngine = {
             end
             return version
         end,
+        ---Get Il2Cpp version for Unity 2020
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24.3 to 27.1)
         [2020] = function(self, unityVersion)
             local version = 24.3
             if compareVersions(unityVersion, self.ConstSemVer['2020_2_4']) >= 0 then
@@ -57,9 +80,15 @@ local VersionEngine = {
             end
             return version
         end,
+        ---Get Il2Cpp version for Unity 2021
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (27.2 or 29)
         [2021] = function(self, unityVersion)
             return compareVersions(unityVersion, self.ConstSemVer['2021_2']) >= 0 and 29 or 27.2
         end,
+        ---Get Il2Cpp version for Unity 2022
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (29, 29.1 or 31)
         [2022] = function(self, unityVersion)
             local version = 29
             if compareVersions(unityVersion, self.ConstSemVer['2022_3_41']) >= 0 then
@@ -69,10 +98,17 @@ local VersionEngine = {
             end
             return version
         end,
+        ---Get Il2Cpp version for Unity 2023
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (30)
         [2023] = function(self, unityVersion)
             return 30
         end,
     },
+    
+    ---Read Unity version from memory or libmain.so
+    -- Attempts to detect the Unity version using multiple methods
+    -- @return table|nil Table with major, minor, patch version numbers or nil if not found
     ReadUnityVersion = function()
         local version = {2018, 2019, 2020, 2021, 2022, 2023, 2024}
         local lm = gg.getRangesList('libmain.so')
@@ -107,6 +143,11 @@ local VersionEngine = {
             return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch) }
         end
     end,
+    
+    ---Choose appropriate Il2Cpp version based on Unity version
+    -- @param version number|nil Optional forced version number
+    -- @param globalMetadataHeader table|nil Optional global metadata header
+    -- @return number Selected Il2Cpp version
     ChooseVersion = function(self, version, globalMetadataHeader)
         if not version then
             local unityVersion = self.ReadUnityVersion()
@@ -128,7 +169,11 @@ local VersionEngine = {
     end,
 }
 
+
 return setmetatable(VersionEngine, {
+    ---Metatable call handler for VersionEngine
+    -- Allows VersionEngine to be called as a function
+    -- @return number Selected Il2Cpp version
     __call = function(self)
         return self:ChooseVersion()
     end

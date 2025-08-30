@@ -1,12 +1,16 @@
 local AndroidInfo = require("Androidinfo")
 
 ---@class ObjectApi
+---Module for handling Il2Cpp object operations and memory management
 local ObjectApi = {
 
+    ---@field regionObject number Memory region to search for objects (default: gg.REGION_ANONYMOUS)
     regionObject = gg.REGION_ANONYMOUS,
 
-    ---@param self ObjectApi
-    ---@param Objects table
+    ---Filter objects to remove invalid references and handle 64-bit Android SDK 30+ special cases
+    -- @param self ObjectApi The ObjectApi instance
+    -- @param Objects table Table of objects to filter
+    -- @return table Filtered objects with valid references
     FilterObjects = function(self, Objects)
         local FilterObjects = {}
         for k, v in ipairs(gg.getValuesRange(Objects)) do
@@ -44,9 +48,10 @@ local ObjectApi = {
         return _FilterObjects
     end,
 
-
-    ---@param self ObjectApi
-    ---@param ClassAddress string
+    ---Find objects of a specific class in memory
+    -- @param self ObjectApi The ObjectApi instance
+    -- @param ClassAddress string|number Address of the class to search for
+    -- @return table Table of found objects
     FindObjects = function(self, ClassAddress)
         gg.clearResults()
         gg.setRanges(0)
@@ -71,9 +76,10 @@ local ObjectApi = {
         return self:FilterObjects(t);--self:FilterObjects(FindsResult)
     end,
 
-    
-    ---@param self ObjectApi
-    ---@param ClassesInfo ClassInfo[]
+    ---Find objects from multiple class information structures
+    -- @param self ObjectApi The ObjectApi instance
+    -- @param ClassesInfo ClassInfo[] Array of class information tables
+    -- @return table Table of found objects
     From = function(self, ClassesInfo)
         local Objects = {}
         for j = 1, #ClassesInfo do
@@ -83,7 +89,9 @@ local ObjectApi = {
         return Objects
     end,
 
-
+    ---Find the class head (start address) for a given object address
+    -- @param Address number Memory address of an object
+    -- @return table Table containing address and value of the class head
     FindHead = function(Address)
         local validAddress = Address
         local mayBeHead = {}
@@ -104,4 +112,10 @@ local ObjectApi = {
     end,
 }
 
-return setmetatable(ObjectApi, {__call = ObjectApi.From})
+return setmetatable(ObjectApi, {
+    ---Metatable call handler for ObjectApi
+    -- Allows ObjectApi to be called as a function
+    -- @param ... any Arguments passed to ObjectApi.From
+    -- @return table Table of found objects
+    __call = ObjectApi.From
+})

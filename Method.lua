@@ -1,30 +1,42 @@
+---@class Method
+---Module for handling Il2Cpp method operations and metadata
 local Method = {}
 
+-- Version-specific constants for method parameter handling
 Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
 Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
 
--- Lấy tên của method
+---Get the name of a method
+-- @param method table The method object
+-- @return string Method name
 function Method.GetName(method)
     return method.name
 end
 
--- Lấy class khai báo method
+---Get the declaring class of a method
+-- @param method table The method object
+-- @return table Declaring class object
 function Method.GetDeclaringType(method)
     return Il2Cpp.Class(method.klass)
 end
 
--- Lấy return type của method
+---Get the return type of a method
+-- @param method table The method object
+-- @return table Return type object
 function Method.GetReturnType(method)
     return Il2Cpp.Type(method.return_type)
 end
 
--- Lấy số lượng tham số
+---Get the parameter count of a method
+-- @param method table The method object
+-- @return number Number of parameters
 function Method.GetParamCount(method)
     return method.parameters_count
 end
 
-
--- Lấy tên tham số
+---Get the parameters of a method
+-- @param method table The method object
+-- @return table Array of parameter information
 function Method.GetParam(method)
     if type(method.parameters) == "table" then
         return method.parameters
@@ -46,33 +58,52 @@ function Method.GetParam(method)
     return method.parameters
 end
 
--- Kiểm tra xem method có phải là instance method
+---Check if a method is an instance method
+-- @param method table The method object
+-- @return boolean True if the method is an instance method
 function Method.IsInstance(method)
     return bit32.band(method.flags, 0x0010) == 0 -- METHOD_ATTRIBUTE_STATIC = 0x0010
 end
 
+---Check if a method is abstract
+-- @param method table The method object
+-- @return boolean True if the method is abstract
 function Method.IsAbstract(method)
     return (method.flags & Il2Cpp.Il2CppFlags.Method.METHOD_ATTRIBUTE_ABSTRACT) ~= 0
 end
 
+---Check if a method is static
+-- @param method table The method object
+-- @return boolean True if the method is static
 function Method.IsStatic(method)
     return (method.flags & Il2Cpp.Il2CppFlags.Method.METHOD_ATTRIBUTE_STATIC) ~= 0
 end
 
+---Get the access level of a method
+-- @param method table The method object
+-- @return string Access level description
 function Method.GetAccess(method)
     return Il2Cpp.Il2CppFlags.Method.Access[method.flags & Il2Cpp.Il2CppFlags.Method.METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK] or ""
 end
 
--- Kiểm tra xem method có phải là generic
+---Check if a method is generic
+-- @param method table The method object
+-- @return boolean True if the method is generic
 function Method.IsGeneric(method)
     return method.is_generic ~= 0
 end
 
--- Kiểm tra xem method có phải là instance của generic
+---Check if a method is a generic instance
+-- @param method table The method object
+-- @return boolean True if the method is a generic instance
 function Method.IsGenericInstance(method)
     return method.is_inflated ~= 0 and method.is_generic == 0
 end
 
+---Create a Method object from address
+-- @param addrMethodInfo number Address of the method info
+-- @param addList any Additional parameter (unused in current implementation)
+-- @return table Method object
 function Method:From(addrMethodInfo, addList)
     local method = Il2Cpp.MethodInfo(addrMethodInfo, addList)
     method.address = addrMethodInfo
@@ -82,4 +113,10 @@ function Method:From(addrMethodInfo, addList)
     })
 end
 
-return setmetatable(Method, {__call = Method.From})
+return setmetatable(Method, {
+    ---Metatable call handler for Method
+    -- Allows Method to be called as a function
+    -- @param ... any Arguments passed to Method.From
+    -- @return table Method object
+    __call = Method.From
+})

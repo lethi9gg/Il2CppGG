@@ -41,9 +41,11 @@ local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (
 	return require, loaded, register, modules
 end)(require)
 __bundle_register("Il2CppGG", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@module Il2Cpp
+---Main initialization module for Il2Cpp framework
 Il2Cpp = require "Il2Cpp"()
 
---setup
+-- Setup global metadata and Il2Cpp registration
 local metaStart, metaEnd = Il2Cpp.Universalsearcher:FindGlobalMetaData()
 Il2Cpp.Meta.metaStart = metaStart
 Il2Cpp.Meta.metaEnd = metaEnd
@@ -51,29 +53,32 @@ Il2Cpp.Meta.Header = Il2Cpp.Il2CppGlobalMetadataHeader(metaStart)
 Il2Cpp.Meta.regionClass = Il2Cpp.Version >= 29.1 and gg.REGION_ANONYMOUS or gg.REGION_C_ALLOC
 Il2Cpp.Universalsearcher.Il2CppMetadataRegistration()
 
-
+-- Adjust metadata header offsets by adding the metaStart address
 for k, v in pairs(Il2Cpp.Meta.Header) do
     local _, __ = k:find("Offset")
     if __ == #k then
         Il2Cpp.Meta.Header[k] = metaStart + v
     end
 end
+
+-- Calculate type size and initialize Type module properties
 Il2Cpp.typeSize = Il2Cpp.Meta.Header.typeDefinitionsSize / Il2Cpp.typeCount
-        
 Il2Cpp.Type.typeCount = Il2Cpp.gV(Il2Cpp.metaReg + ( 6 * Il2Cpp.pointSize), Il2Cpp.pointer)
 Il2Cpp.Type.type = Il2Cpp.gV(Il2Cpp.metaReg + ( 7 * Il2Cpp.pointSize), Il2Cpp.pointer)
 
 return Il2Cpp
 end)__bundle_register("Il2Cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Gameguardian
+---@class Il2Cpp
+---Main Il2Cpp module providing core functionality and type definitions
 local x64 = gg.getTargetInfo().x64
 local pointer = x64 and gg.TYPE_QWORD or gg.TYPE_DWORD
 local MainType = pointer
 local pointSize = x64 and 8 or 4
 local Struct = require "Struct"
 local Version = require "Version"
---local Universalsearcher = require "Universalsearcher"
 
+---@class Il2CppTable
+---Main Il2Cpp table containing platform information and core functionality
 Il2Cpp = {
     x64 = x64,
     pointer = pointer,
@@ -81,7 +86,8 @@ Il2Cpp = {
     pointSize = pointSize
 }
 
-
+---@class TypeInfo
+---Table containing type information for various data types
 Il2Cpp.type = {
     Boolean = { size = 1, flags = 1 },
     Byte    = { size = 1, flags = 1 },
@@ -101,22 +107,43 @@ Il2Cpp.type = {
     Object = { size = (Il2Cpp.x64 and 0x10 or 0x8), flags = pointer}
 }
 
+---Get pointer value from memory address
+-- @param address number Memory address to read from
+-- @return number Pointer value
 function Il2Cpp.GetPtr(address)
     return Il2Cpp.FixValue(gg.getValues({{address = Il2Cpp.FixValue(address), flags = Il2Cpp.MainType}})[1].value)
 end
+
+---Fix value by masking platform-specific bits
+-- @param val number Value to fix
+-- @return number Fixed value
 function Il2Cpp.FixValue(val)
 	return (x64 and (val & 0x00FFFFFFFFFFFFFF)) or (val & 0xFFFFFFFF);
 end
 
+---Get value from memory address with optional flags
+-- @param address number|table Memory address or table of addresses
+-- @param flags number|nil Memory flags (optional)
+-- @return any Value or table of values
 function Il2Cpp.gV(address, flags)
 	return (type(address) == "table" and gg.getValues(address)) or gg.getValues({{address=address,flags=flags or Il2Cpp.MainType}})[1].value;
 end
 
+---Align offset to specified alignment
+-- @param offset number Offset to align
+-- @param align_to number Alignment value
+-- @return number Aligned offset
 function Il2Cpp.align(offset, align_to)
     return ((offset + align_to - 1) / align_to) * align_to
 end
 
+---Cache for UTF-8 string conversion
 local Utf8ToStringCache = {}
+
+---Convert UTF-8 encoded memory to string
+-- @param Address number Memory address of UTF-8 string
+-- @param length number|nil Length of string (optional, if not provided reads until null terminator)
+-- @return string Decoded string
 Il2Cpp.Utf8ToString = function(Address, length)
     if Utf8ToStringCache[Address] then
         return Utf8ToStringCache[Address]
@@ -147,6 +174,10 @@ Il2Cpp.Utf8ToString = function(Address, length)
     end
 end
 
+---Create a class structure for GameGuardian with proper field alignment
+-- @param fields table Table of field definitions
+-- @param version number Il2Cpp version
+-- @return table Class structure with proper alignment
 function Il2Cpp.classGG(fields, version)
     local offset = 0
     local klass = {}
@@ -219,6 +250,8 @@ function Il2Cpp.classGG(fields, version)
     })
 end
 
+---@class Il2CppFlags
+---Il2Cpp flags and attributes for methods and fields
 Il2Cpp.Il2CppFlags = {
     Method = {
         METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK = 0x0007,
@@ -248,8 +281,8 @@ Il2Cpp.Il2CppFlags = {
     }
 }
 
-
--- Il2CppTypeEnum
+---@class Il2CppTypeEnum
+---Enumeration of Il2Cpp type values
 Il2Cpp.Il2CppTypeEnum = {
     IL2CPP_TYPE_END = 0x00,
     IL2CPP_TYPE_VOID = 0x01,
@@ -267,7 +300,7 @@ Il2Cpp.Il2CppTypeEnum = {
     IL2CPP_TYPE_R8 = 0x0d,
     IL2CPP_TYPE_STRING = 0x0e,
     IL2CPP_TYPE_PTR = 0x0f,
-    IL2CPP_TYPE_BYREF = 0x10,
+    IL2Cpp_TYPE_BYREF = 0x10,
     IL2CPP_TYPE_VALUETYPE = 0x11,
     IL2CPP_TYPE_CLASS = 0x12,
     IL2CPP_TYPE_VAR = 0x13,
@@ -291,6 +324,9 @@ Il2Cpp.Il2CppTypeEnum = {
 }
 
 return setmetatable(Struct, {
+    ---Metatable call handler for Struct
+    -- Initializes Il2Cpp structures based on version
+    -- @return table Il2Cpp API with all modules loaded
     __call = function(self)
         Il2Cpp.Version = Version()
         local default = Il2Cpp.Version
@@ -311,13 +347,13 @@ return setmetatable(Struct, {
             default = 29.1
         end
         
-        -- Truyền version vào các struct để lọc field
+        -- Pass version to structs to filter fields
         for k, v in pairs(self) do
             v.name = k
             Il2Cpp[k] = Il2Cpp.classGG(v, default)
         end
       
-        
+        -- Load all Il2Cpp API modules
         local api = {
             Meta = require "Meta",
             Class = require "Class",
@@ -329,97 +365,108 @@ return setmetatable(Struct, {
             Universalsearcher = require "Universalsearcher"
         }
         
-        
         return setmetatable(api, {
             __index = Il2Cpp
         })
     end
 })
 end)__bundle_register("Struct", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class Structs
+---Table containing all Il2Cpp structure definitions for different versions
 local Structs = {
+    ---@class Il2CppGlobalMetadataHeader
+    ---Global metadata header structure containing offsets and sizes of various metadata sections
     Il2CppGlobalMetadataHeader = {
-        { "sanity", "UInt32"},
-        { "version", "Int32"},
-        { "stringLiteralOffset", "UInt32"},
-        { "stringLiteralSize", "Int32"},
-        { "stringLiteralDataOffset", "UInt32"},
-        { "stringLiteralDataSize", "Int32"},
-        { "stringOffset", "UInt32"},
-        { "stringSize", "Int32"},
-        { "eventsOffset", "UInt32"},
-        { "eventsSize", "Int32"},
-        { "propertiesOffset", "UInt32"},
-        { "propertiesSize", "Int32"},
-        { "methodsOffset", "UInt32"},
-        { "methodsSize", "Int32"},
-        { "parameterDefaultValuesOffset", "UInt32"},
-        { "parameterDefaultValuesSize", "Int32"},
-        { "fieldDefaultValuesOffset", "UInt32"},
-        { "fieldDefaultValuesSize", "Int32"},
-        { "fieldAndParameterDefaultValueDataOffset", "UInt32"},
-        { "fieldAndParameterDefaultValueDataSize", "Int32"},
-        { "fieldMarshaledSizesOffset", "UInt32"},
-        { "fieldMarshaledSizesSize", "Int32"},
-        { "parametersOffset", "UInt32"},
-        { "parametersSize", "Int32"},
-        { "fieldsOffset", "UInt32"},
-        { "fieldsSize", "Int32"},
-        { "genericParametersOffset", "UInt32"},
-        { "genericParametersSize", "Int32"},
-        { "genericParameterConstraintsOffset", "UInt32"},
-        { "genericParameterConstraintsSize", "Int32"},
-        { "genericContainersOffset", "UInt32"},
-        { "genericContainersSize", "Int32"},
-        { "nestedTypesOffset", "UInt32"},
-        { "nestedTypesSize", "Int32"},
-        { "interfacesOffset", "UInt32"},
-        { "interfacesSize", "Int32"},
-        { "vtableMethodsOffset", "UInt32"},
-        { "vtableMethodsSize", "Int32"},
-        { "interfaceOffsetsOffset", "UInt32"},
-        { "interfaceOffsetsSize", "Int32"},
-        { "typeDefinitionsOffset", "UInt32"},
-        { "typeDefinitionsSize", "Int32"},
-        { "rgctxEntriesOffset", "UInt32", version = {max = 24.1}},
-        { "rgctxEntriesCount", "Int32", version = {max = 24.1}},
-        { "imagesOffset", "UInt32"},
-        { "imagesSize", "Int32"},
-        { "assembliesOffset", "UInt32"},
-        { "assembliesSize", "Int32"},
-        { "metadataUsageListsOffset", "UInt32", version = {min = 19, max = 24.5}},
-        { "metadataUsageListsCount", "Int32", version = {min = 19, max = 24.5}},
-        { "metadataUsagePairsOffset", "UInt32", version = {min = 19, max = 24.5}},
-        { "metadataUsagePairsCount", "Int32", version = {min = 19, max = 24.5}},
-        { "fieldRefsOffset", "UInt32", version = {min = 19}},
-        { "fieldRefsSize", "Int32", version = {min = 19}},
-        { "referencedAssembliesOffset", "UInt32", version = {min = 20}},
-        { "referencedAssembliesSize", "Int32", version = {min = 20}},
-        { "attributesInfoOffset", "UInt32", version = {min = 21, max = 27.2}},
-        { "attributesInfoCount", "Int32", version = {min = 21, max = 27.2}},
-        { "attributeTypesOffset", "UInt32", version = {min = 21, max = 27.2}},
-        { "attributeTypesCount", "Int32", version = {min = 21, max = 27.2}},
-        { "attributeDataOffset", "UInt32", version = {min = 29}},
-        { "attributeDataSize", "Int32", version = {min = 29}},
-        { "attributeDataRangeOffset", "UInt32", version = {min = 29}},
-        { "attributeDataRangeSize", "Int32", version = {min = 29}},
-        { "unresolvedVirtualCallParameterTypesOffset", "UInt32", version = {min = 22}},
-        { "unresolvedVirtualCallParameterTypesSize", "Int32", version = {min = 22}},
-        { "unresolvedVirtualCallParameterRangesOffset", "UInt32", version = {min = 22}},
-        { "unresolvedVirtualCallParameterRangesSize", "Int32", version = {min = 22}},
-        { "windowsRuntimeTypeNamesOffset", "UInt32", version = {min = 23}},
-        { "windowsRuntimeTypeNamesSize", "Int32", version = {min = 23}},
-        { "windowsRuntimeStringsOffset", "UInt32", version = {min = 27}},
-        { "windowsRuntimeStringsSize", "Int32", version = {min = 27}},
-        { "exportedTypeDefinitionsOffset", "UInt32", version = {min = 24}},
-        { "exportedTypeDefinitionsSize", "Int32", version = {min = 24}},
+        { "sanity", "UInt32", version = {max = 24.1} }, -- Sanity check value
+        { "version", "Int32" }, -- Metadata version
+        { "stringLiteralOffset", "UInt32" }, -- Offset to string literals
+        { "stringLiteralSize", "Int32" }, -- Size of string literals section
+        { "stringLiteralDataOffset", "UInt32" }, -- Offset to string literal data
+        { "stringLiteralDataSize", "Int32" }, -- Size of string literal data
+        { "stringOffset", "UInt32" }, -- Offset to string table
+        { "stringSize", "Int32" }, -- Size of string table
+        { "eventsOffset", "UInt32" }, -- Offset to events table
+        { "eventsSize", "Int32" }, -- Size of events table
+        { "propertiesOffset", "UInt32" }, -- Offset to properties table
+        { "propertiesSize", "Int32" }, -- Size of properties table
+        { "methodsOffset", "UInt32" }, -- Offset to methods table
+        { "methodsSize", "Int32" }, -- Size of methods table
+        { "parameterDefaultValuesOffset", "UInt32" }, -- Offset to parameter default values
+        { "parameterDefaultValuesSize", "Int32" }, -- Size of parameter default values
+        { "fieldDefaultValuesOffset", "UInt32" }, -- Offset to field default values
+        { "fieldDefaultValuesSize", "Int32" }, -- Size of field default values
+        { "fieldAndParameterDefaultValueDataOffset", "UInt32" }, -- Offset to default value data
+        { "fieldAndParameterDefaultValueDataSize", "Int32" }, -- Size of default value data
+        { "fieldMarshaledSizesOffset", "UInt32" }, -- Offset to field marshaled sizes
+        { "fieldMarshaledSizesSize", "Int32" }, -- Size of field marshaled sizes
+        { "parametersOffset", "UInt32" }, -- Offset to parameters table
+        { "parametersSize", "Int32" }, -- Size of parameters table
+        { "fieldsOffset", "UInt32" }, -- Offset to fields table
+        { "fieldsSize", "Int32" }, -- Size of fields table
+        { "genericParametersOffset", "UInt32" }, -- Offset to generic parameters
+        { "genericParametersSize", "Int32" }, -- Size of generic parameters
+        { "genericParameterConstraintsOffset", "UInt32" }, -- Offset to generic parameter constraints
+        { "genericParameterConstraintsSize", "Int32" }, -- Size of generic parameter constraints
+        { "genericContainersOffset", "UInt32" }, -- Offset to generic containers
+        { "genericContainersSize", "Int32" }, -- Size of generic containers
+        { "nestedTypesOffset", "UInt32" }, -- Offset to nested types
+        { "nestedTypesSize", "Int32" }, -- Size of nested types
+        { "interfacesOffset", "UInt32" }, -- Offset to interfaces
+        { "interfacesSize", "Int32" }, -- Size of interfaces
+        { "vtableMethodsOffset", "UInt32" }, -- Offset to vtable methods
+        { "vtableMethodsSize", "Int32" }, -- Size of vtable methods
+        { "interfaceOffsetsOffset", "UInt32" }, -- Offset to interface offsets
+        { "interfaceOffsetsSize", "Int32" }, -- Size of interface offsets
+        { "typeDefinitionsOffset", "UInt32" }, -- Offset to type definitions
+        { "typeDefinitionsSize", "Int32" }, -- Size of type definitions
+        { "rgctxEntriesOffset", "UInt32", version = {max = 24.1} }, -- Offset to RGCTX entries (≤ v24.1)
+        { "rgctxEntriesCount", "Int32", version = {max = 24.1} }, -- Count of RGCTX entries (≤ v24.1)
+        { "imagesOffset", "UInt32" }, -- Offset to images table
+        { "imagesSize", "Int32" }, -- Size of images table
+        { "assembliesOffset", "UInt32" }, -- Offset to assemblies table
+        { "assembliesSize", "Int32" }, -- Size of assemblies table
+        { "metadataUsageListsOffset", "UInt32", version = {min = 19, max = 24.5} }, -- Offset to metadata usage lists (v19-v24.5)
+        { "metadataUsageListsCount", "Int32", version = {min = 19, max = 24.5} }, -- Count of metadata usage lists (v19-v24.5)
+        { "metadataUsagePairsOffset", "UInt32", version = {min = 19, max = 24.5} }, -- Offset to metadata usage pairs (v19-v24.5)
+        { "metadataUsagePairsCount", "Int32", version = {min = 19, max = 24.5} }, -- Count of metadata usage pairs (v19-v24.5)
+        { "fieldRefsOffset", "UInt32", version = {min = 19} }, -- Offset to field references (≥ v19)
+        { "fieldRefsSize", "Int32", version = {min = 19} }, -- Size of field references (≥ v19)
+        { "referencedAssembliesOffset", "UInt32", version = {min = 20} }, -- Offset to referenced assemblies (≥ v20)
+        { "referencedAssembliesSize", "Int32", version = {min = 20} }, -- Size of referenced assemblies (≥ v20)
+        { "attributesInfoOffset", "UInt32", version = {min = 21, max = 27.2} }, -- Offset to attributes info (v21-v27.2)
+        { "attributesInfoCount", "Int32", version = {min = 21, max = 27.2} }, -- Count of attributes info (v21-v27.2)
+        { "attributeTypesOffset", "UInt32", version = {min = 21, max = 27.2} }, -- Offset to attribute types (v21-v27.2)
+        { "attributeTypesCount", "Int32", version = {min = 21, max = 27.2} }, -- Count of attribute types (v21-v27.2)
+        { "attributeDataOffset", "UInt32", version = {min = 29} }, -- Offset to attribute data (≥ v29)
+        { "attributeDataSize", "Int32", version = {min = 29} }, -- Size of attribute data (≥ v29)
+        { "attributeDataRangeOffset", "UInt32", version = {min = 29} }, -- Offset to attribute data ranges (≥ v29)
+        { "attributeDataRangeSize", "Int32", version = {min = 29} }, -- Size of attribute data ranges (≥ v29)
+        { "unresolvedVirtualCallParameterTypesOffset", "UInt32", version = {min = 22} }, -- Offset to unresolved virtual call parameter types (≥ v22)
+        { "unresolvedVirtualCallParameterTypesSize", "Int32", version = {min = 22} }, -- Size of unresolved virtual call parameter types (≥ v22)
+        { "unresolvedVirtualCallParameterRangesOffset", "UInt32", version = {min = 22} }, -- Offset to unresolved virtual call parameter ranges (≥ v22)
+        { "unresolvedVirtualCallParameterRangesSize", "Int32", version = {min = 22} }, -- Size of unresolved virtual call parameter ranges (≥ v22)
+        { "windowsRuntimeTypeNamesOffset", "UInt32", version = {min = 23} }, -- Offset to Windows Runtime type names (≥ v23)
+        { "windowsRuntimeTypeNamesSize", "Int32", version = {min = 23} }, -- Size of Windows Runtime type names (≥ v23)
+        { "windowsRuntimeStringsOffset", "UInt32", version = {min = 27} }, -- Offset to Windows Runtime strings (≥ v27)
+        { "windowsRuntimeStringsSize", "Int32", version = {min = 27} }, -- Size of Windows Runtime strings (≥ v27)
+        { "exportedTypeDefinitionsOffset", "UInt32", version = {min = 24} }, -- Offset to exported type definitions (≥ v24)
+        { "exportedTypeDefinitionsSize", "Int32", version = {min = 24} }, -- Size of exported type definitions (≥ v24)
     },
+
+    ---@class VirtualInvokeData
+    ---Virtual invocation data structure
     VirtualInvokeData = {
-        { "methodPtr", "Pointer" },
-        { "method", "Pointer" }
+        { "methodPtr", "Pointer" }, -- Pointer to method
+        { "method", "Pointer" } -- Method pointer
     },
+
+    ---@class Il2CppType
+    ---Il2Cpp type representation with bitfield decoding
     Il2CppType = {
-        { "data", "Pointer" },
-        { "bits", "UInt32" },
+        { "data", "Pointer" }, -- Type data pointer
+        { "bits", "UInt32" }, -- Bitfield containing type attributes
+        ---Initialize and decode type attributes from bitfield
+        -- @return self Initialized type object
         Init = function(self)
             self.attrs = bit32.band(self.bits, 0xffff)
             self.type = bit32.rshift(bit32.band(self.bits, 0xff0000), 16)
@@ -438,207 +485,239 @@ local Structs = {
         end
     },
     
+    ---@class Il2CppObject
+    ---Base Il2Cpp object structure
     Il2CppObject = {
-        { "klass", "Pointer" },
-        { "monitor", "Pointer" }
+        { "klass", "Pointer" }, -- Class pointer
+        { "monitor", "Pointer" } -- Monitor pointer for synchronization
     },
+
+    ---@class Il2CppRGCTXData
+    ---Runtime Generic Context Data structure
     Il2CppRGCTXData = {
-        { "rgctxDataDummy", "Pointer" }
+        { "rgctxDataDummy", "Pointer" } -- Dummy RGCTX data pointer
     },
+
+    ---@class Il2CppRuntimeInterfaceOffsetPair
+    ---Runtime interface offset pair structure
     Il2CppRuntimeInterfaceOffsetPair = {
-        { "interfaceType", "Pointer" },
-        { "offset", "Int32" }
+        { "interfaceType", "Pointer" }, -- Interface type pointer
+        { "offset", "Int32" } -- Interface offset
     },
+
+    ---@class FieldInfo
+    ---Field information structure
     FieldInfo = {
-        { "name", "Pointer" },
-        { "type", "Pointer" },
-        { "parent", "Pointer" },
-        { "offset", "Int32" },
-        { "token", "UInt32" }
+        { "name", "Pointer" }, -- Field name pointer
+        { "type", "Pointer" }, -- Field type pointer
+        { "parent", "Pointer" }, -- Parent type pointer
+        { "offset", "Int32" }, -- Field offset
+        { "token", "UInt32" } -- Field token
     },
+
+    ---@class Il2CppArrayBounds
+    ---Array bounds information structure
     Il2CppArrayBounds = {
-        { "length", "Int32", version = { max = 24.0 } },
-        { "length", "Size_t", version = { min = 24.1 } },
-        { "lower_bound", "Int32" }
+        { "length", "Int32", version = { max = 24.0 } }, -- Array length (≤ v24.0)
+        { "length", "Size_t", version = { min = 24.1 } }, -- Array length (≥ v24.1)
+        { "lower_bound", "Int32" } -- Array lower bound
     }
 }
 
-local Il2CppType = Structs.Il2CppType
-
+---@class Il2CppClass
+---Il2Cpp class structure with version-specific fields
 Structs.Il2CppClass = {
-    { "image", "Pointer" },
-    { "gc_desc", "Pointer" },
-    { "name", "Pointer"},
-    { "namespaze", "Pointer" },
-    { "byval_arg", "Pointer", version = { max = 24.0 } },
-    { "byval_arg", Il2CppType, version = { min = 24.1 } },
-    { "this_arg", "Pointer", version = { max = 24.0 } },
-    { "this_arg", Il2CppType, version = { min = 24.1 } },
-    { "element_class", "Pointer" },
-    { "castClass", "Pointer" },
-    { "declaringType", "Pointer" },
-    { "parent", "Pointer" },
-    { "generic_class", "Pointer" },
-    { "typeDefinition", "Pointer", version = { min = 24.1, max = 24.5 } }, -- Chỉ có ở V241, V242
-    { "typeMetadataHandle", "Pointer", version = { min = 27 } }, -- Chỉ có ở V27, V29
-    { "interopData", "Pointer" },
-    { "klass", "Pointer", version = { min = 24.1 } }, -- Chỉ có từ V241 trở lên
+    { "image", "Pointer" }, -- Image pointer
+    { "gc_desc", "Pointer" }, -- GC descriptor pointer
+    { "name", "Pointer"}, -- Class name pointer
+    { "namespaze", "Pointer" }, -- Class namespace pointer
+    { "byval_arg", "Pointer", version = { max = 24.0 } }, -- ByVal argument pointer (≤ v24.0)
+    { "byval_arg", Structs.Il2CppType, version = { min = 24.1 } }, -- ByVal argument type (≥ v24.1)
+    { "this_arg", "Pointer", version = { max = 24.0 } }, -- This argument pointer (≤ v24.0)
+    { "this_arg", Structs.Il2CppType, version = { min = 24.1 } }, -- This argument type (≥ v24.1)
+    { "element_class", "Pointer" }, -- Element class pointer
+    { "castClass", "Pointer" }, -- Cast class pointer
+    { "declaringType", "Pointer" }, -- Declaring type pointer
+    { "parent", "Pointer" }, -- Parent class pointer
+    { "generic_class", "Pointer" }, -- Generic class pointer
+    { "typeDefinition", "Pointer", version = { min = 24.1, max = 24.5 } }, -- Type definition pointer (v24.1-v24.5)
+    { "typeMetadataHandle", "Pointer", version = { min = 27 } }, -- Type metadata handle (≥ v27)
+    { "interopData", "Pointer" }, -- Interop data pointer
+    { "klass", "Pointer", version = { min = 24.1 } }, -- Class pointer (≥ v24.1)
     
-    { "fields", "Pointer" },
-    { "events", "Pointer" },
-    { "properties", "Pointer" },
-    { "methods", "Pointer" },
-    { "nestedTypes", "Pointer" },
-    { "implementedInterfaces", "Pointer" },
-    { "interfaceOffsets", "Pointer" },
-    { "static_fields", "Pointer" },
-    { "rgctx_data", "Pointer" },
+    { "fields", "Pointer" }, -- Fields pointer
+    { "events", "Pointer" }, -- Events pointer
+    { "properties", "Pointer" }, -- Properties pointer
+    { "methods", "Pointer" }, -- Methods pointer
+    { "nestedTypes", "Pointer" }, -- Nested types pointer
+    { "implementedInterfaces", "Pointer" }, -- Implemented interfaces pointer
+    { "interfaceOffsets", "Pointer" }, -- Interface offsets pointer
+    { "static_fields", "Pointer" }, -- Static fields pointer
+    { "rgctx_data", "Pointer" }, -- RGCTX data pointer
     
-    { "typeHierarchy", "Pointer" },
+    { "typeHierarchy", "Pointer" }, -- Type hierarchy pointer
     
-    { "unity_user_data", "Pointer", version = { min = 24.2 } }, -- Thêm vào V242, V27, V29
+    { "unity_user_data", "Pointer", version = { min = 24.2 } }, -- Unity user data pointer (≥ v24.2)
     
-    { "initializationExceptionGCHandle", "UInt32", version = { min = 24.1 } }, -- Từ V241 trở lên
+    { "initializationExceptionGCHandle", "UInt32", version = { min = 24.1 } }, -- Initialization exception GC handle (≥ v24.1)
     
-    { "cctor_started", "UInt32" },
-    { "cctor_finished", "UInt32" },
-    { "cctor_thread", "UInt64", version = { max = 24.1 } },
-    { "cctor_thread", "Size_t", version = { min = 24.2 } },
+    { "cctor_started", "UInt32" }, -- Static constructor started flag
+    { "cctor_finished", "UInt32" }, -- Static constructor finished flag
+    { "cctor_thread", "UInt64", version = { max = 24.1 } }, -- Static constructor thread ID (≤ v24.1)
+    { "cctor_thread", "Size_t", version = { min = 24.2 } }, -- Static constructor thread ID (≥ v24.2)
     
-    { "genericContainerIndex", "Int32", version = { max = 24.5 } }, -- Chỉ có ở V22, V240, V241, V242
-    { "genericContainerHandle", "Pointer", version = { min = 27 } }, -- Chỉ có ở V27, V29
-    { "customAttributeIndex", "Int32", version = { max = 24.0 } }, -- Chỉ có ở V22, V240
-    { "instance_size", "UInt32" },
-    { "stack_slot_size", "UInt32" , version = { min = 29.1 } },
-    { "actualSize", "UInt32" },
-    { "element_size", "UInt32" },
-    { "native_size", "Int32" },
-    { "static_fields_size", "UInt32" },
-    { "thread_static_fields_size", "UInt32" },
-    { "thread_static_fields_offset", "Int32" },
-    { "flags", "UInt32" },
-    { "token", "UInt32" },
+    { "genericContainerIndex", "Int32", version = { max = 24.5 } }, -- Generic container index (≤ v24.5)
+    { "genericContainerHandle", "Pointer", version = { min = 27 } }, -- Generic container handle (≥ v27)
+    { "customAttributeIndex", "Int32", version = { max = 24.0 } }, -- Custom attribute index (≤ v24.0)
+    { "instance_size", "UInt32" }, -- Instance size
+    { "stack_slot_size", "UInt32" , version = { min = 29.1 } }, -- Stack slot size (≥ v29.1)
+    { "actualSize", "UInt32" }, -- Actual size
+    { "element_size", "UInt32" }, -- Element size
+    { "native_size", "Int32" }, -- Native size
+    { "static_fields_size", "UInt32" }, -- Static fields size
+    { "thread_static_fields_size", "UInt32" }, -- Thread static fields size
+    { "thread_static_fields_offset", "Int32" }, -- Thread static fields offset
+    { "flags", "UInt32" }, -- Class flags
+    { "token", "UInt32" }, -- Class token
     
-    { "method_count", "UInt16" },
-    { "property_count", "UInt16" },
-    { "field_count", "UInt16" },
-    { "event_count", "UInt16" },
-    { "nested_type_count", "UInt16" },
-    { "vtable_count", "UInt16" },
-    { "interfaces_count", "UInt16" },
-    { "interface_offsets_count", "UInt16" },
+    { "method_count", "UInt16" }, -- Method count
+    { "property_count", "UInt16" }, -- Property count
+    { "field_count", "UInt16" }, -- Field count
+    { "event_count", "UInt16" }, -- Event count
+    { "nested_type_count", "UInt16" }, -- Nested type count
+    { "vtable_count", "UInt16" }, -- VTable count
+    { "interfaces_count", "UInt16" }, -- Interfaces count
+    { "interface_offsets_count", "UInt16" }, -- Interface offsets count
     
-    { "typeHierarchyDepth", "UInt8" },
-    { "genericRecursionDepth", "UInt8" },
-    { "rank", "UInt8" },
-    { "minimumAlignment", "UInt8" },
-    { "naturalAligment", "UInt8" },
-    { "packingSize", "UInt8" },
+    { "typeHierarchyDepth", "UInt8" }, -- Type hierarchy depth
+    { "genericRecursionDepth", "UInt8" }, -- Generic recursion depth
+    { "rank", "UInt8" }, -- Array rank
+    { "minimumAlignment", "UInt8" }, -- Minimum alignment
+    { "naturalAligment", "UInt8" }, -- Natural alignment
+    { "packingSize", "UInt8" }, -- Packing size
     
-    { "bitflags1", "UInt8" },
-    { "bitflags2", "UInt8" }
+    { "bitflags1", "UInt8" }, -- Bitflags 1
+    { "bitflags2", "UInt8" } -- Bitflags 2
 }
 
+---@class MethodInfo
+---Method information structure with version-specific fields
 Structs.MethodInfo = {
-    { "methodPointer", "Pointer" },
-    { "virtualMethodPointer", "Pointer", version = { min = 29 } }, -- Chỉ có ở V29
-    { "invoker_method", "Pointer" },
-    { "name", "Pointer" },
-    { "klass", "Pointer", version = { min = 24.1 } }, -- V241, V242, V27, V29
-    { "declaring_type", "Pointer", version = { max = 24.0 } }, -- V22, V240
-    { "return_type", "Pointer" },
-    { "parameters", "Pointer" },
-    { "methodDefinition", "Pointer", version = { max = 24.5 } }, -- V22, V240, V241, V242
-    { "genericContainer", "Pointer", version = { max = 24.5 } }, -- V22, V240, V241, V242
-    { "methodMetadataHandle", "Pointer", version = { min = 27 } }, -- V27, V29
-    { "genericContainerHandle", "Pointer", version = { min = 27 } }, -- V27, V29
-    { "customAttributeIndex", "Int32", version = { max = 24.0 } }, -- V22, V240
-    { "token", "UInt32" },
-    { "flags", "UInt16" },
-    { "iflags", "UInt16" },
-    { "slot", "UInt16" },
-    { "parameters_count", "UInt8" },
-    { "bitflags", "UInt8" }
+    { "methodPointer", "Pointer" }, -- Method pointer
+    { "virtualMethodPointer", "Pointer", version = { min = 29 } }, -- Virtual method pointer (≥ v29)
+    { "invoker_method", "Pointer" }, -- Invoker method pointer
+    { "name", "Pointer" }, -- Method name pointer
+    { "klass", "Pointer", version = { min = 24.1 } }, -- Class pointer (≥ v24.1)
+    { "declaring_type", "Pointer", version = { max = 24.0 } }, -- Declaring type pointer (≤ v24.0)
+    { "return_type", "Pointer" }, -- Return type pointer
+    { "parameters", "Pointer" }, -- Parameters pointer
+    { "methodDefinition", "Pointer", version = { max = 24.5 } }, -- Method definition pointer (≤ v24.5)
+    { "genericContainer", "Pointer", version = { max = 24.5 } }, -- Generic container pointer (≤ v24.5)
+    { "methodMetadataHandle", "Pointer", version = { min = 27 } }, -- Method metadata handle (≥ v27)
+    { "genericContainerHandle", "Pointer", version = { min = 27 } }, -- Generic container handle (≥ v27)
+    { "customAttributeIndex", "Int32", version = { max = 24.0 } }, -- Custom attribute index (≤ v24.0)
+    { "token", "UInt32" }, -- Method token
+    { "flags", "UInt16" }, -- Method flags
+    { "iflags", "UInt16" }, -- Method interface flags
+    { "slot", "UInt16" }, -- Method slot
+    { "parameters_count", "UInt8" }, -- Parameters count
+    { "bitflags", "UInt8" } -- Method bitflags
 }
 
--- Il2CppGenericContext
+---@class Il2CppGenericContext
+---Generic context structure
 Structs.Il2CppGenericContext = {
-    { "class_inst", "Pointer"},
-    { "method_inst", "Pointer"},
+    { "class_inst", "Pointer"}, -- Class instance pointer
+    { "method_inst", "Pointer"}, -- Method instance pointer
 }
 
--- Il2CppGenericClass
+---@class Il2CppGenericClass
+---Generic class structure with version-specific fields
 Structs.Il2CppGenericClass = {
-    { "typeDefinitionIndex", "Pointer", version = {max = 24.5}},
-    { "type", "Pointer", version = {min = 27}},
-    { "context", Structs.Il2CppGenericContext},
-    { "cached_class", "Pointer"},
+    { "typeDefinitionIndex", "Pointer", version = {max = 24.5}}, -- Type definition index (≤ v24.5)
+    { "type", "Pointer", version = {min = 27}}, -- Type pointer (≥ v27)
+    { "context", Structs.Il2CppGenericContext}, -- Generic context
+    { "cached_class", "Pointer"}, -- Cached class pointer
 }
 
--- Il2CppGenericInst
+---@class Il2CppGenericInst
+---Generic instance structure
 Structs.Il2CppGenericInst = {
-    { "type_argc", "Pointer"},
-    { "type_argv", "Pointer"},
+    { "type_argc", "Pointer"}, -- Type argument count
+    { "type_argv", "Pointer"}, -- Type argument values
 }
 
--- Il2CppArrayType
+---@class Il2CppArrayType
+---Array type structure
 Structs.Il2CppArrayType = {
-    { "etype", "Pointer"},
-    { "rank", "Int8"},
-    { "numsizes", "Int8"},
-    { "numlobounds", "Int8"},
-    { "sizes", "Pointer"},
-    { "lobounds", "Pointer"},
+    { "etype", "Pointer"}, -- Element type pointer
+    { "rank", "Int8"}, -- Array rank
+    { "numsizes", "Int8"}, -- Number of sizes
+    { "numlobounds", "Int8"}, -- Number of lower bounds
+    { "sizes", "Pointer"}, -- Sizes pointer
+    { "lobounds", "Pointer"}, -- Lower bounds pointer
 }
 
+---@class Il2CppGenericParameter
+---Generic parameter structure
 Structs.Il2CppGenericParameter = {
-    { "ownerIndex", "Int32" },
-    { "nameIndex", "UInt32" },
-    { "constraintsStart", "Int16" },
-    { "constraintsCount", "Int16" },
-    { "num", "UInt16" },
-    { "flags", "UInt16" }
+    { "ownerIndex", "Int32" }, -- Owner index
+    { "nameIndex", "UInt32" }, -- Name index
+    { "constraintsStart", "Int16" }, -- Constraints start index
+    { "constraintsCount", "Int16" }, -- Constraints count
+    { "num", "UInt16" }, -- Parameter number
+    { "flags", "UInt16" } -- Parameter flags
 }
 
+---@class Il2CppGenericContainer
+---Generic container structure
 Structs.Il2CppGenericContainer = {
-    { "ownerIndex", "Int32" },
-    { "type_argc", "Int32" },
-    { "is_method", "Int32" },
-    { "genericParameterStart", "Int32" }
+    { "ownerIndex", "Int32" }, -- Owner index
+    { "type_argc", "Int32" }, -- Type argument count
+    { "is_method", "Int32" }, -- Is method flag
+    { "genericParameterStart", "Int32" } -- Generic parameter start index
 }
 
+---@class Il2CppMethodDefinition
+---Method definition structure with version-specific fields
 Structs.Il2CppMethodDefinition = {
-    { "nameIndex", "UInt32" },
-    { "declaringType", "Int32" },
-    { "returnType", "Int32" },
-    { "returnParameterToken", "Int32", version = {min = 31} },
-    { "parameterStart", "Int32" },
-    { "customAttributeIndex", "Int32", version = {max = 24} },
-    { "genericContainerIndex", "Int32" },
-    { "methodIndex", "Int32", version = {max = 24.1} },
-    { "invokerIndex", "Int32", version = {max = 24.1} },
-    { "delegateWrapperIndex", "Int32", version = {max = 24.1} },
-    { "rgctxStartIndex", "Int32", version = {max = 24.1} },
-    { "rgctxCount", "Int32", version = {max = 24.1} },
-    { "token", "UInt32" },
-    { "flags", "UInt16" },
-    { "iflags", "UInt16" },
-    { "slot", "UInt16" },
-    { "parameterCount", "UInt16" }
+    { "nameIndex", "UInt32" }, -- Name index
+    { "declaringType", "Int32" }, -- Declaring type index
+    { "returnType", "Int32" }, -- Return type index
+    { "returnParameterToken", "Int32", version = {min = 31} }, -- Return parameter token (≥ v31)
+    { "parameterStart", "Int32" }, -- Parameter start index
+    { "customAttributeIndex", "Int32", version = {max = 24} }, -- Custom attribute index (≤ v24)
+    { "genericContainerIndex", "Int32" }, -- Generic container index
+    { "methodIndex", "Int32", version = {max = 24.1} }, -- Method index (≤ v24.1)
+    { "invokerIndex", "Int32", version = {max = 24.1} }, -- Invoker index (≤ v24.1)
+    { "delegateWrapperIndex", "Int32", version = {max = 24.1} }, -- Delegate wrapper index (≤ v24.1)
+    { "rgctxStartIndex", "Int32", version = {max = 24.1} }, -- RGCTX start index (≤ v24.1)
+    { "rgctxCount", "Int32", version = {max = 24.1} }, -- RGCTX count (≤ v24.1)
+    { "token", "UInt32" }, -- Method token
+    { "flags", "UInt16" }, -- Method flags
+    { "iflags", "UInt16" }, -- Method interface flags
+    { "slot", "UInt16" }, -- Method slot
+    { "parameterCount", "UInt16" } -- Parameter count
 }
 
--- Il2CppParameterDefinition
+---@class Il2CppParameterDefinition
+---Parameter definition structure with version-specific fields
 Structs.Il2CppParameterDefinition = {
-        { "nameIndex", "UInt32" },
-        { "token", "UInt32" },
-        { "customAttributeIndex", "Int32", version = {max = 24} },
-        { "typeIndex", "Int32" }
+    { "nameIndex", "UInt32" }, -- Name index
+    { "token", "UInt32" }, -- Parameter token
+    { "customAttributeIndex", "Int32", version = {max = 24} }, -- Custom attribute index (≤ v24)
+    { "typeIndex", "Int32" } -- Type index
 }
 
 return Structs
 end)__bundle_register("Version", function(require, _LOADED, __bundle_register, __bundle_modules)
-local osUV = 0x11
+---@class VersionEngine
+---Module for detecting and handling Unity engine version compatibility with Il2Cpp
 
+---Compare two semantic version numbers
+-- @param v1 table First version table with major, minor, patch fields
+-- @param v2 table Second version table with major, minor, patch fields
+-- @return number -1 if v1 < v2, 1 if v1 > v2, 0 if equal
 local function compareVersions(v1, v2)
     if v1.major ~= v2.major then
         return v1.major < v2.major and -1 or 1
@@ -652,9 +731,12 @@ local function compareVersions(v1, v2)
     return 0
 end
 
+-- OS-specific Unity version string offset
+local osUV = 0x11
 
----@class VersionEngine
 local VersionEngine = {
+    ---@class ConstSemVer
+    ---Table of constant semantic version numbers for known Unity versions
     ConstSemVer = {
         ['2018_3'] = { major = 2018, minor = 3, patch = 0 },
         ['2019_4_21'] = { major = 2019, minor = 4, patch = 21 },
@@ -667,13 +749,25 @@ local VersionEngine = {
         ['2022_2'] = { major = 2022, minor = 2, patch = 0 },
         ['2022_3_41'] = { major = 2022, minor = 3, patch = 41 },
     },
+    
+    ---@class YearMapping
+    ---Mapping of Unity release years to Il2Cpp versions with conditional logic
     Year = {
+        ---Get Il2Cpp version for Unity 2017
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24)
         [2017] = function(self, unityVersion)
             return 24
         end,
+        ---Get Il2Cpp version for Unity 2018
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24 or 24.1)
         [2018] = function(self, unityVersion)
             return compareVersions(unityVersion, self.ConstSemVer['2018_3']) >= 0 and 24.1 or 24
         end,
+        ---Get Il2Cpp version for Unity 2019
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24.2 to 24.5)
         [2019] = function(self, unityVersion)
             local version = 24.2
             if compareVersions(unityVersion, self.ConstSemVer['2019_4_21']) >= 0 then
@@ -685,6 +779,9 @@ local VersionEngine = {
             end
             return version
         end,
+        ---Get Il2Cpp version for Unity 2020
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (24.3 to 27.1)
         [2020] = function(self, unityVersion)
             local version = 24.3
             if compareVersions(unityVersion, self.ConstSemVer['2020_2_4']) >= 0 then
@@ -696,9 +793,15 @@ local VersionEngine = {
             end
             return version
         end,
+        ---Get Il2Cpp version for Unity 2021
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (27.2 or 29)
         [2021] = function(self, unityVersion)
             return compareVersions(unityVersion, self.ConstSemVer['2021_2']) >= 0 and 29 or 27.2
         end,
+        ---Get Il2Cpp version for Unity 2022
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (29, 29.1 or 31)
         [2022] = function(self, unityVersion)
             local version = 29
             if compareVersions(unityVersion, self.ConstSemVer['2022_3_41']) >= 0 then
@@ -708,10 +811,17 @@ local VersionEngine = {
             end
             return version
         end,
+        ---Get Il2Cpp version for Unity 2023
+        -- @param unityVersion table The Unity version table
+        -- @return number Il2Cpp version (30)
         [2023] = function(self, unityVersion)
             return 30
         end,
     },
+    
+    ---Read Unity version from memory or libmain.so
+    -- Attempts to detect the Unity version using multiple methods
+    -- @return table|nil Table with major, minor, patch version numbers or nil if not found
     ReadUnityVersion = function()
         local version = {2018, 2019, 2020, 2021, 2022, 2023, 2024}
         local lm = gg.getRangesList('libmain.so')
@@ -746,6 +856,11 @@ local VersionEngine = {
             return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch) }
         end
     end,
+    
+    ---Choose appropriate Il2Cpp version based on Unity version
+    -- @param version number|nil Optional forced version number
+    -- @param globalMetadataHeader table|nil Optional global metadata header
+    -- @return number Selected Il2Cpp version
     ChooseVersion = function(self, version, globalMetadataHeader)
         if not version then
             local unityVersion = self.ReadUnityVersion()
@@ -767,15 +882,26 @@ local VersionEngine = {
     end,
 }
 
+
 return setmetatable(VersionEngine, {
+    ---Metatable call handler for VersionEngine
+    -- Allows VersionEngine to be called as a function
+    -- @return number Selected Il2Cpp version
     __call = function(self)
         return self:ChooseVersion()
     end
 })
 end)__bundle_register("Meta", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class Meta
+---Module for handling metadata operations in Il2Cpp
 local Meta = {}
     
 
+---Get pointers to a string in memory by searching for the string pattern
+-- @param name string The string name to search for
+-- @param addList any Additional list parameter (unused in current implementation)
+-- @return table Table of search results containing addresses pointing to the string
+-- @error Throws an error if the class is not found in global-metadata
 function Meta.GetPointersToString(name, addList)
     gg.clearResults()
     gg.setRanges(-1)
@@ -796,11 +922,17 @@ function Meta.GetPointersToString(name, addList)
     return res
 end
 
+---Get string from metadata using string index
+-- @param index number String index in metadata
+-- @return string Decoded UTF-8 string from metadata
 function Meta:GetStringFromIndex(index)
     local stringDefinitions = Meta.Header.stringOffset
     return Il2Cpp.Utf8ToString(stringDefinitions + index)
 end
 
+---Get generic container from metadata by index
+-- @param index number Generic container index
+-- @return table Il2CppGenericContainer object
 function Meta:GetGenericContainer(index)
     local index = index
     if Meta.Header.genericContainersSize > index then
@@ -809,6 +941,9 @@ function Meta:GetGenericContainer(index)
     return Il2Cpp.Il2CppGenericContainer(index)
 end
 
+---Get generic parameter from metadata by index
+-- @param index number Generic parameter index
+-- @return table Il2CppGenericParameter object
 function Meta:GetGenericParameter(index)
     local index = index
     if Meta.Header.genericParametersSize > index then
@@ -817,25 +952,33 @@ function Meta:GetGenericParameter(index)
     return Il2Cpp.Il2CppGenericParameter(index)
 end
 
+---Get method definition from metadata by index
+-- @param index number Method definition index
+-- @return table Il2CppMethodDefinition object
 function Meta:GetMethodDefinition(index)
     local index = Meta.Header.methodsOffset + (index * Il2Cpp.Il2CppMethodDefinition.size)
     return Il2Cpp.Il2CppMethodDefinition(index)
 end
 
+---Get parameter definition from metadata by index
+-- @param index number Parameter definition index
+-- @return table Il2CppParameterDefinition object
 function Meta:GetParameterDefinition(index)
     local index = Meta.Header.parametersOffset + (index * Il2Cpp.Il2CppParameterDefinition.size)
     return Il2Cpp.Il2CppParameterDefinition(index)
 end
 
-
-
 return Meta
 end)__bundle_register("Class", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class Class
+---Module for handling Il2Cpp class operations and metadata
 local Class = {}
 
--- Lấy tên của class
+---Get the name of a class, handling generic classes with type parameters
+-- @param klass table The class object
+-- @return string The class name with generic parameters if applicable
 function Class.GetName(klass)
-    local Name = klass.name--Il2Cpp.Utf8ToString(klass.name)
+    local Name = klass.name
     local index = Name:find("`")
     if index then
         Name = Name:sub(1, index - 1)
@@ -849,25 +992,33 @@ function Class.GetName(klass)
         end
         Name = Name .. "<" ..table.concat(type_argc, ", ") .. ">"
     end
-    return Name--Il2Cpp.Utf8ToString(klass.name):gsub("`%d+", "")
+    return Name
 end
 
--- Lấy namespace của class
+---Get the namespace of a class
+-- @param klass table The class object
+-- @return string The class namespace
 function Class.GetNamespace(klass)
-    return klass.namespaze--Il2Cpp.Utf8ToString(klass.namespaze)
+    return klass.namespaze
 end
 
--- Lấy image của class
+---Get the image (assembly) of a class
+-- @param klass table The class object
+-- @return string The image name containing the class
 function Class.GetImage(klass)
     return Il2Cpp.Utf8ToString(Il2Cpp.GetPtr(klass.image))
 end
 
--- Lấy parent class
+---Get the parent class of a class
+-- @param klass table The class object
+-- @return table Parent class object
 function Class.GetParent(klass)
     return Class(klass.parent)
 end
 
--- Lấy danh sách field của class
+---Get all fields of a class
+-- @param klass table The class object
+-- @return table Array of field objects
 function Class.GetFields(klass)
     if type(klass.fields) == "table" then return klass.fields end
     local fields = {}
@@ -883,7 +1034,10 @@ function Class.GetFields(klass)
     return fields
 end
 
--- Tìm field theo tên
+---Find a field by name in a class
+-- @param klass table The class object
+-- @param name string The field name to search for
+-- @return table|nil Field object if found, nil otherwise
 function Class.GetField(klass, name)
     for _, field in ipairs(klass:GetFields()) do
         if field:GetName() == name then
@@ -893,7 +1047,9 @@ function Class.GetField(klass, name)
     return nil
 end
 
--- Lấy danh sách method của class
+---Get all methods of a class
+-- @param klass table The class object
+-- @return table Array of method objects
 function Class.GetMethods(klass)
     if type(klass.methods) == "table" then return klass.methods end
     local methods = {}
@@ -910,7 +1066,11 @@ function Class.GetMethods(klass)
     return methods
 end
 
--- Tìm method theo tên và số lượng tham số
+---Find a method by name and parameter count in a class
+-- @param klass table The class object
+-- @param name string The method name to search for
+-- @param paramCount number|nil The number of parameters (optional)
+-- @return table|nil Method object if found, nil otherwise
 function Class.GetMethod(klass, name, paramCount)
     for _, method in ipairs(klass:GetMethods()) do
         if method:GetName() == name and (not paramCount or method.parameters_count == paramCount) then
@@ -920,30 +1080,44 @@ function Class.GetMethod(klass, name, paramCount)
     return nil
 end
 
--- Kiểm tra xem class có phải là generic
+---Check if a class is generic
+-- @param klass table The class object
+-- @return boolean True if the class is generic
 function Class.IsGeneric(klass)
     return klass.is_generic ~= 0
 end
 
--- Kiểm tra xem class có phải là instance của generic
+---Check if a class is an inflated generic instance
+-- @param klass table The class object
+-- @return boolean True if the class is an inflated generic
 function Class.IsInflated(klass)
     return klass.generic_class ~= 0
 end
 
+---Check if a class is a nested type
+-- @param klass table The class object
+-- @return boolean True if the class is nested
 function Class.IsNested(klass)
     return klass.nested_type_count ~= 0
 end
 
--- Lấy kích thước instance của class
+---Get the instance size of a class
+-- @param klass table The class object
+-- @return number The size of class instances in bytes
 function Class.GetInstanceSize(klass)
     return klass.instance_size
 end
 
+---Find all instances of a class in memory
+-- @param klass table The class object
+-- @return table Array of object instances
 function Class.GetInstance(klass)
     return Il2Cpp.Object:FindObjects(klass.address)
 end
 
--- Lấy danh sách interface của class
+---Get all interfaces implemented by a class
+-- @param klass table The class object
+-- @return table Array of interface class objects
 function Class.GetInterfaces(klass)
     local interfaces = {}
     local iter = 0
@@ -957,6 +1131,9 @@ function Class.GetInterfaces(klass)
     return interfaces
 end
 
+---Get the type definition index of a class
+-- @param klass table The class object
+-- @return number|nil The type definition index if found, nil otherwise
 function Class.GetIndex(klass)
     local index = klass.byval_arg.data
     if Il2Cpp.Meta.Header.typeDefinitionsOffset <= index and (Il2Cpp.Meta.Header.typeDefinitionsOffset + Il2Cpp.Meta.Header.typeDefinitionsSize) >= index then
@@ -966,6 +1143,9 @@ function Class.GetIndex(klass)
     end
 end
 
+---Get pointers to a class by its index
+-- @param index number The class index
+-- @return number|nil The class pointer if found, nil otherwise
 function Class.GetPointersToIndex(index)
     if Il2Cpp.Meta.Header.typeDefinitionsOffset <= index and (Il2Cpp.Meta.Header.typeDefinitionsOffset + Il2Cpp.Meta.Header.typeDefinitionsSize) >= index then
         index = (index - Il2Cpp.Meta.Header.typeDefinitionsOffset) / Il2Cpp.typeSize
@@ -975,7 +1155,12 @@ function Class.GetPointersToIndex(index)
     return Il2Cpp.GetPtr(Il2Cpp.typeDef + (index * Il2Cpp.pointSize))
 end
 
+---Cache for class information checks
 Class.IsClassCache = {}
+
+---Check if an address points to valid class information
+-- @param Address number Memory address to check
+-- @return string|nil Image name if valid class, nil otherwise
 function Class.IsClassInfo(Address)
     if Class.IsClassCache[Address] then
         return Class.IsClassCache[Address]
@@ -1001,9 +1186,16 @@ function Class.IsClassInfo(Address)
     return Class.IsClassCache[Address]
 end
 
+---Name offset based on platform architecture
 Class.NameOffset = (Il2Cpp.x64 and 0x10 or 0x8)
 
+---Cache for class objects
 Class.__cache = {}
+
+---Create a class object from address, name, or index
+-- @param addr_name_index string|number Address, name, or index of the class
+-- @param add any Additional parameter (unused in current implementation)
+-- @return table Class object or array of class objects
 function Class:From(addr_name_index, add)
     if self.__cache[addr_name_index] then return self.__cache[addr_name_index] end
     
@@ -1038,42 +1230,59 @@ function Class:From(addr_name_index, add)
     return self.__cache[addr_name_index]
 end
 
-
 return setmetatable(Class, {
+    ---Metatable call handler for Class
+    -- Allows Class to be called as a function
+    -- @param ... any Arguments passed to Class.From
+    -- @return table Class object or array of class objects
     __call = Class.From
 })
 end)__bundle_register("Field", function(require, _LOADED, __bundle_register, __bundle_modules)
 --local Il2Cpp = require("Il2Cpp")()
 
+---@class Field
+---Module for handling Il2Cpp field operations and metadata
 local Field = {}
 
--- Lấy tên của field
+---Get the name of a field
+-- @param field table The field object
+-- @return string Field name
 function Field.GetName(field)
-    return field.name--Il2Cpp.Utf8ToString(field.name)
+    return field.name
 end
 
--- Lấy parent class của field
+---Get the parent class of a field
+-- @param field table The field object
+-- @return table Parent class object
 function Field.GetParent(field)
     return Il2Cpp.Class(field.parent)
 end
 
--- Lấy offset của field
+---Get the offset of a field
+-- @param field table The field object
+-- @return number Field offset
 function Field.GetOffset(field)
     return field.offset
 end
 
--- Lấy type của field
+---Get the type of a field
+-- @param field table The field object
+-- @return table Type object
 function Field.GetType(field)
     return Il2Cpp.Type(field.type)
 end
 
--- Kiểm tra xem field có phải là instance field
+---Check if a field is an instance field
+-- @param field table The field object
+-- @return boolean True if the field is an instance field
 function Field.IsInstance(field)
     local attrs = Field.GetType(field).attrs
     return bit32.band(attrs, 0x0010) == 0 -- FIELD_ATTRIBUTE_STATIC = 0x0010
 end
 
--- Kiểm tra xem field có phải là static field
+---Check if a field is a normal static field
+-- @param field table The field object
+-- @return boolean True if the field is a normal static field
 function Field.IsNormalStatic(field)
     if not bit32.band(field.type.attrs, 0x0010) then -- FIELD_ATTRIBUTE_STATIC
         return false
@@ -1087,7 +1296,11 @@ function Field.IsNormalStatic(field)
     return true
 end
 
--- Lấy giá trị của instance field
+---Get the value of an instance field
+-- @param field table The field object
+-- @param obj number Object address
+-- @return any Field value
+-- @error Throws an error if the field is not an instance field
 function Field.GetValue(field, obj)
     if not Field.IsInstance(field) then
         error("Field must be an instance field")
@@ -1097,7 +1310,11 @@ function Field.GetValue(field, obj)
     return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
 end
 
--- Đặt giá trị cho instance field
+---Set the value of an instance field
+-- @param field table The field object
+-- @param obj number Object address
+-- @param value any New value to set
+-- @error Throws an error if the field is not an instance field
 function Field.SetValue(field, obj, value)
     if not Field.IsInstance(field) then
         error("Field must be an instance field")
@@ -1107,7 +1324,10 @@ function Field.SetValue(field, obj, value)
     gg.setValues({{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, value = value}})
 end
 
--- Lấy giá trị của static field
+---Get the value of a static field
+-- @param field table The field object
+-- @return any Static field value
+-- @error Throws an error if the field is not a normal static field
 function Field.StaticGetValue(field)
     if not Field.IsNormalStatic(field) then
         error("Field must be a normal static field")
@@ -1117,7 +1337,10 @@ function Field.StaticGetValue(field)
     return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
 end
 
--- Đặt giá trị cho static field
+---Set the value of a static field
+-- @param field table The field object
+-- @param value any New value to set
+-- @error Throws an error if the field is not a normal static field
 function Field.StaticSetValue(field, value)
     if not Field.IsNormalStatic(field) then
         error("Field must be a normal static field")
@@ -1127,6 +1350,9 @@ function Field.StaticSetValue(field, value)
     gg.setValues({{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, value = value}})
 end
 
+---Create a Field object from address or name
+-- @param addr_name string|number Field name or address
+-- @return table Field object or array of field objects
 function Field:From(addr_name)
     
     local field = {}
@@ -1156,35 +1382,53 @@ function Field:From(addr_name)
     return #field == 1 and field[1] or field
 end
 
-return setmetatable(Field, {__call = Field.From})
+return setmetatable(Field, {
+    ---Metatable call handler for Field
+    -- Allows Field to be called as a function
+    -- @param ... any Arguments passed to Field.From
+    -- @return table Field object or array of field objects
+    __call = Field.From
+})
 end)__bundle_register("Method", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class Method
+---Module for handling Il2Cpp method operations and metadata
 local Method = {}
 
+-- Version-specific constants for method parameter handling
 Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
 Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
 
--- Lấy tên của method
+---Get the name of a method
+-- @param method table The method object
+-- @return string Method name
 function Method.GetName(method)
     return method.name
 end
 
--- Lấy class khai báo method
+---Get the declaring class of a method
+-- @param method table The method object
+-- @return table Declaring class object
 function Method.GetDeclaringType(method)
     return Il2Cpp.Class(method.klass)
 end
 
--- Lấy return type của method
+---Get the return type of a method
+-- @param method table The method object
+-- @return table Return type object
 function Method.GetReturnType(method)
     return Il2Cpp.Type(method.return_type)
 end
 
--- Lấy số lượng tham số
+---Get the parameter count of a method
+-- @param method table The method object
+-- @return number Number of parameters
 function Method.GetParamCount(method)
     return method.parameters_count
 end
 
-
--- Lấy tên tham số
+---Get the parameters of a method
+-- @param method table The method object
+-- @return table Array of parameter information
 function Method.GetParam(method)
     if type(method.parameters) == "table" then
         return method.parameters
@@ -1206,33 +1450,52 @@ function Method.GetParam(method)
     return method.parameters
 end
 
--- Kiểm tra xem method có phải là instance method
+---Check if a method is an instance method
+-- @param method table The method object
+-- @return boolean True if the method is an instance method
 function Method.IsInstance(method)
     return bit32.band(method.flags, 0x0010) == 0 -- METHOD_ATTRIBUTE_STATIC = 0x0010
 end
 
+---Check if a method is abstract
+-- @param method table The method object
+-- @return boolean True if the method is abstract
 function Method.IsAbstract(method)
     return (method.flags & Il2Cpp.Il2CppFlags.Method.METHOD_ATTRIBUTE_ABSTRACT) ~= 0
 end
 
+---Check if a method is static
+-- @param method table The method object
+-- @return boolean True if the method is static
 function Method.IsStatic(method)
     return (method.flags & Il2Cpp.Il2CppFlags.Method.METHOD_ATTRIBUTE_STATIC) ~= 0
 end
 
+---Get the access level of a method
+-- @param method table The method object
+-- @return string Access level description
 function Method.GetAccess(method)
     return Il2Cpp.Il2CppFlags.Method.Access[method.flags & Il2Cpp.Il2CppFlags.Method.METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK] or ""
 end
 
--- Kiểm tra xem method có phải là generic
+---Check if a method is generic
+-- @param method table The method object
+-- @return boolean True if the method is generic
 function Method.IsGeneric(method)
     return method.is_generic ~= 0
 end
 
--- Kiểm tra xem method có phải là instance của generic
+---Check if a method is a generic instance
+-- @param method table The method object
+-- @return boolean True if the method is a generic instance
 function Method.IsGenericInstance(method)
     return method.is_inflated ~= 0 and method.is_generic == 0
 end
 
+---Create a Method object from address
+-- @param addrMethodInfo number Address of the method info
+-- @param addList any Additional parameter (unused in current implementation)
+-- @return table Method object
 function Method:From(addrMethodInfo, addList)
     local method = Il2Cpp.MethodInfo(addrMethodInfo, addList)
     method.address = addrMethodInfo
@@ -1242,17 +1505,27 @@ function Method:From(addrMethodInfo, addList)
     })
 end
 
-return setmetatable(Method, {__call = Method.From})
+return setmetatable(Method, {
+    ---Metatable call handler for Method
+    -- Allows Method to be called as a function
+    -- @param ... any Arguments passed to Method.From
+    -- @return table Method object
+    __call = Method.From
+})
 end)__bundle_register("Object", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = require("Androidinfo")
 
 ---@class ObjectApi
+---Module for handling Il2Cpp object operations and memory management
 local ObjectApi = {
 
+    ---@field regionObject number Memory region to search for objects (default: gg.REGION_ANONYMOUS)
     regionObject = gg.REGION_ANONYMOUS,
 
-    ---@param self ObjectApi
-    ---@param Objects table
+    ---Filter objects to remove invalid references and handle 64-bit Android SDK 30+ special cases
+    -- @param self ObjectApi The ObjectApi instance
+    -- @param Objects table Table of objects to filter
+    -- @return table Filtered objects with valid references
     FilterObjects = function(self, Objects)
         local FilterObjects = {}
         for k, v in ipairs(gg.getValuesRange(Objects)) do
@@ -1290,9 +1563,10 @@ local ObjectApi = {
         return _FilterObjects
     end,
 
-
-    ---@param self ObjectApi
-    ---@param ClassAddress string
+    ---Find objects of a specific class in memory
+    -- @param self ObjectApi The ObjectApi instance
+    -- @param ClassAddress string|number Address of the class to search for
+    -- @return table Table of found objects
     FindObjects = function(self, ClassAddress)
         gg.clearResults()
         gg.setRanges(0)
@@ -1317,19 +1591,22 @@ local ObjectApi = {
         return self:FilterObjects(t);--self:FilterObjects(FindsResult)
     end,
 
-    
-    ---@param self ObjectApi
-    ---@param ClassesInfo ClassInfo[]
-    Find = function(self, ClassesInfo)
+    ---Find objects from multiple class information structures
+    -- @param self ObjectApi The ObjectApi instance
+    -- @param ClassesInfo ClassInfo[] Array of class information tables
+    -- @return table Table of found objects
+    From = function(self, ClassesInfo)
         local Objects = {}
         for j = 1, #ClassesInfo do
-            local FindResult = self:FindObjects(ClassesInfo[j].ClassAddress)
+            local FindResult = self:FindObjects(ClassesInfo[j].address)
             table.move(FindResult, 1, #FindResult, #Objects + 1, Objects)
         end
         return Objects
     end,
 
-
+    ---Find the class head (start address) for a given object address
+    -- @param Address number Memory address of an object
+    -- @return table Table containing address and value of the class head
     FindHead = function(Address)
         local validAddress = Address
         local mayBeHead = {}
@@ -1350,20 +1627,44 @@ local ObjectApi = {
     end,
 }
 
-return ObjectApi
+return setmetatable(ObjectApi, {
+    ---Metatable call handler for ObjectApi
+    -- Allows ObjectApi to be called as a function
+    -- @param ... any Arguments passed to ObjectApi.From
+    -- @return table Table of found objects
+    __call = ObjectApi.From
+})
 end)__bundle_register("Androidinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class AndroidInfo
+---Table containing Android target information for the current application
 local info = gg.getTargetInfo()
+
+---@class AndroidInfoTable
+---Android target information structure containing platform architecture, SDK version, package details and cache path
 local AndroidInfo = {
+    ---@field platform boolean Whether the target platform is 64-bit (true) or 32-bit (false)
     platform = info.x64,
+    
+    ---@field sdk number Target SDK version of the application
     sdk = info.targetSdkVersion,
+    
+    ---@field pkg string Package name of the target application
     pkg = gg.getTargetPackage(),
+    
+    ---@field path string Cache path for the application with format: 
+    -- "/cache/packageName-versionCode-architecture(64/32)"
     path = gg.EXT_CACHE_DIR .. "/" .. info.packageName .. "-" .. info.versionCode .. "-" .. (info.x64 and "64" or "32")
 }
 
 return AndroidInfo
 end)__bundle_register("Image", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class Image
+---Module for handling Il2Cpp image operations and metadata
 local Image = {}
 
+---Create an Image object from name or get all images
+-- @param name string|nil Image name to search for (optional)
+-- @return table Image object or table of all images
 function Image:From(name)
     if not self.__cache then
         if not Il2Cpp.imageSize then
@@ -1402,38 +1703,52 @@ function Image:From(name)
     end
 end
 
--- Lấy tên image, kiểu "nickname" của image
+---Get the name of an image
+-- @param image table The image object
+-- @return string Image name
 function Image.GetName(image)
     return image.name
 end
 
--- Lấy tên file của image, như "địa chỉ nhà" của image
+---Get the file name of an image
+-- @param image table The image object
+-- @return string Image file name
 function Image.GetFileName(image)
     return image.name
 end
 
--- Lấy assembly của image, tìm "gia đình" của image
+---Get the assembly of an image
+-- @param image table The image object
+-- @return number Assembly pointer
 function Image.GetAssembly(image)
     return image.assembly
 end
 
--- Lấy entry point, kiểu "cửa chính" của image
+---Get the entry point of an image
+-- @param image table The image object
+-- @return table|nil Method object if entry point exists, nil otherwise
 function Image.GetEntryPoint(image)
     local method = Il2Cpp.il2cpp_image_get_entry_point(image)
     return method ~= 0 and Il2Cpp.MethodInfo(method) or nil
 end
 
--- Lấy corlib image, image "ông trùm" của hệ thống
+---Get the corlib image
+-- @return table Corlib image object
 function Image.GetCorlib()
     return Il2Cpp.il2cpp_get_corlib()
 end
 
--- Lấy số lượng type trong image, đếm "dân số" class
+---Get the number of types in an image
+-- @param image table The image object
+-- @return number Number of types
 function Image.GetNumTypes(image)
     return image.typeCount
 end
 
--- Lấy class theo index, lấy "cư dân" thứ i
+---Get a type by index from an image
+-- @param image table The image object
+-- @param index number Type index
+-- @return table|nil Class object if found, nil otherwise
 function Image.GetType(image, index)
     if index >= image.typeCount then
         return nil
@@ -1442,7 +1757,10 @@ function Image.GetType(image, index)
     return handle ~= 0 and Il2Cpp.Class(handle) or nil
 end
 
--- Lấy danh sách type, gom hết "dân chúng" trong image
+---Get all types from an image
+-- @param image table The image object
+-- @param exportedOnly boolean Whether to return only exported types
+-- @return table Array of class objects
 function Image.GetTypes(image, exportedOnly)
     local types = {}
     for i = 0, image.typeCount - 1 do
@@ -1456,7 +1774,9 @@ function Image.GetTypes(image, exportedOnly)
     return types
 end
 
--- Check type có phải exported, kiểu "public figure" không
+---Check if a type is exported
+-- @param type table The class object
+-- @return boolean True if the type is exported
 function Image.IsExported(type)
     local flags = Class.GetFlags(type)
     local visibility = bit32.band(flags, 0x0007) -- TYPE_ATTRIBUTE_VISIBILITY_MASK
@@ -1469,7 +1789,11 @@ function Image.IsExported(type)
     return false
 end
 
--- Tìm class theo namespace và name, như "search Google" trong image
+---Find a class by namespace and name in an image
+-- @param image table The image object
+-- @param namespace string Namespace of the class
+-- @param name string Name of the class
+-- @return table|nil Class object if found, nil otherwise
 function Image.Class(image, namespace, name)
     local key = (namespace or "") .. "." .. name
     if not image.nameToClassHashTable or image.typeCount > image.countHashTable then
@@ -1481,13 +1805,17 @@ function Image.Class(image, namespace, name)
     return Il2Cpp.Class(image.nameToClassHashTable[key])
 end
 
--- Tìm class theo thông tin parse, kiểu "search pro" với nested type
+---Find a class from type name parse info
+-- @param image table The image object
+-- @param parseInfo table Parsed type information
+-- @param ignoreCase boolean Whether to ignore case when matching names
+-- @return table|nil Class object if found, nil otherwise
 function Image.FromTypeNameParseInfo(image, parseInfo, ignoreCase)
     local ns = parseInfo.ns or ""
     local name = parseInfo.name or ""
     local klass = Image.Class(image, ns, name)
     if not klass then
-        -- Tìm trong exported types nếu không thấy
+        -- Search in exported types if not found
         for i = 0, image.exportedTypeCount - 1 do
             local handle = Il2Cpp.il2cpp_assembly_get_exported_type_handle(image, i)
             if handle ~= 0 then
@@ -1522,7 +1850,8 @@ function Image.FromTypeNameParseInfo(image, parseInfo, ignoreCase)
     return klass
 end
 
--- Lấy executing image, tìm image đang "chạy show"
+---Get the executing image from the current stack
+-- @return table Executing image object
 function Image.GetExecutingImage()
     local stack = Il2Cpp.il2cpp_stack_frames()
     for _, frame in ipairs(stack) do
@@ -1534,7 +1863,8 @@ function Image.GetExecutingImage()
     return Image.GetCorlib()
 end
 
--- Lấy calling image, tìm image "gọi điện" cho executing image
+---Get the calling image from the current stack
+-- @return table Calling image object
 function Image.GetCallingImage()
     local stack = Il2Cpp.il2cpp_stack_frames()
     local foundFirst = false
@@ -1550,17 +1880,23 @@ function Image.GetCallingImage()
     return Image.GetCorlib()
 end
 
--- Check class có phải System.Type, kiểu "meta class"
+---Check if a class is System.Type
+-- @param klass table The class object
+-- @return boolean True if the class is System.Type
 function Image.IsSystemType(klass)
     return klass.namespaze == "System" and klass.name == "Type"
 end
 
--- Check class có phải System.Reflection.Assembly
+---Check if a class is System.Reflection.Assembly
+-- @param klass table The class object
+-- @return boolean True if the class is System.Reflection.Assembly
 function Image.IsSystemReflectionAssembly(klass)
     return klass.namespaze == "System.Reflection" and klass.name == "Assembly"
 end
 
--- Khởi tạo nameToClassHashTable, chuẩn bị "danh bạ" class
+---Initialize name to class hash table for an image
+-- @param image table The image object
+-- @param key string The key to search for
 function Image.InitNameToClassHashTable(image, key)
     if image.nameToClassHashTable[key] then
         return
@@ -1573,25 +1909,17 @@ function Image.InitNameToClassHashTable(image, key)
             image.nameToClassHashTable[ns .. "." .. name] = klass
             image.countHashTable = i + 1
             if image.nameToClassHashTable[key] then
-                --print((index - Il2Cpp.typeDef) / Il2Cpp.pointSize)
                 return klass
             end
-            --Image.AddNestedTypesToHashTable(image, klass, ns, name)
         end
     end
-    --[[
-    for i = 0, image.exportedTypeCount - 1 do
-        local handle = Il2Cpp.il2cpp_assembly_get_exported_type_handle(image, i)
-        if handle ~= 0 and not Il2Cpp.il2cpp_type_is_nested(handle) then
-            local ns, name = Il2Cpp.il2cpp_type_get_namespace_and_name(handle)
-            image.nameToClassHashTable[ns .. "." .. name] = handle
-            Image.AddNestedTypesToHashTable(image, handle, ns, name)
-        end
-    end
-    ]]
 end
 
--- Thêm nested types vào hash table, như "đăng ký hộ khẩu" cho nested class
+---Add nested types to hash table for an image
+-- @param image table The image object
+-- @param handle number Class handle
+-- @param namespaze string Namespace of the class
+-- @param parentName string Name of the parent class
 function Image.AddNestedTypesToHashTable(image, handle, namespaze, parentName)
     local iter = 0
     while true do
@@ -1605,7 +1933,8 @@ function Image.AddNestedTypesToHashTable(image, handle, namespaze, parentName)
     end
 end
 
--- Khởi tạo nested types, chuẩn bị "gia phả" cho nested class
+---Initialize nested types for an image
+-- @param image table The image object
 function Image.InitNestedTypes(image)
     for i = 0, image.typeCount - 1 do
         local handle = Il2Cpp.il2cpp_assembly_get_type_handle(image, i)
@@ -1621,26 +1950,37 @@ function Image.InitNestedTypes(image)
     end
 end
 
--- Lấy cached resource data, tìm "kho báu" của image
+---Get cached resource data from an image
+-- @param image table The image object
+-- @param name string Resource name
+-- @return any|nil Resource data if found, nil otherwise
 function Image.GetCachedResourceData(image, name)
-    -- Giả định Il2Cpp.il2cpp_get_cached_resource_data trả về dữ liệu
     local data = Il2Cpp.il2cpp_get_cached_resource_data(image, name)
     return data or nil
 end
 
--- Xóa cached resource data, dọn dẹp "kho báu"
+---Clear cached resource data
 function Image.ClearCachedResourceData()
     Il2Cpp.il2cpp_clear_cached_resource_data()
 end
 
-return setmetatable(Image, {__call = Image.From})
+return setmetatable(Image, {
+    ---Metatable call handler for Image
+    -- Allows Image to be called as a function
+    -- @param ... any Arguments passed to Image.From
+    -- @return table Image object or table of image objects
+    __call = Image.From
+})
 end)__bundle_register("Type", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Type.lua
+---@class Type
+---Module for handling Il2Cpp type operations and metadata
 local Type = {}
 
--- Đọc Il2CppType từ bộ nhớ
+---Create a Type object from memory address or index
+-- @param address number Memory address or type index
+-- @return table Type object with metadata
 function Type:From(address)
-    if Type.typeCount >= address then -- nếu là index
+    if Type.typeCount >= address then -- if it's an index
         address = Il2Cpp.gV(Type.type + (address * Il2Cpp.pointSize), Il2Cpp.pointer)
     end
     local typeStruct = Il2Cpp.Il2CppType(address)
@@ -1652,7 +1992,9 @@ function Type:From(address)
     })
 end
 
--- Kiểm tra kiểu có phải là reference type
+---Check if a type is a reference type
+-- @param typeStruct table Type object to check
+-- @return boolean True if the type is a reference type
 function Type.IsReference(typeStruct)
     local t = typeStruct.type
     return t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_STRING or
@@ -1662,7 +2004,9 @@ function Type.IsReference(typeStruct)
            t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_ARRAY
 end
 
--- Kiểm tra kiểu có phải là struct (value type nhưng không phải enum)
+---Check if a type is a struct (value type but not enum)
+-- @param typeStruct table Type object to check
+-- @return boolean True if the type is a struct
 function Type.IsStruct(typeStruct)
     if typeStruct.byref == 1 then return false end
     
@@ -1684,7 +2028,9 @@ function Type.IsStruct(typeStruct)
     return false
 end
 
--- Kiểm tra kiểu có phải là enum
+---Check if a type is an enum
+-- @param typeStruct table Type object to check
+-- @return boolean True if the type is an enum
 function Type.IsEnum(typeStruct)
     local t = typeStruct.type
     if t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VALUETYPE then
@@ -1699,24 +2045,33 @@ function Type.IsEnum(typeStruct)
     return false
 end
 
--- Kiểm tra kiểu có phải là value type
+---Check if a type is a value type
+-- @param typeStruct table Type object to check
+-- @return boolean True if the type is a value type
 function Type.IsValueType(typeStruct)
     return typeStruct.valuetype == 1
 end
 
--- Kiểm tra kiểu có phải là array
+---Check if a type is an array
+-- @param typeStruct table Type object to check
+-- @return boolean True if the type is an array
 function Type.IsArray(typeStruct)
     local t = typeStruct.type
     return t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_SZARRAY or 
            t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_ARRAY
 end
 
--- Kiểm tra kiểu có phải là pointer
+---Check if a type is a pointer
+-- @param typeStruct table Type object to check
+-- @return boolean True if the type is a pointer
 function Type.IsPointer(typeStruct)
     return typeStruct.type == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_PTR
 end
 
--- Lấy Il2CppClass tương ứng với kiểu
+---Get the Il2CppClass corresponding to a type
+-- @param typeStruct table Type object
+-- @param add any Additional parameter (unused in current implementation)
+-- @return table|nil Class object if found, nil otherwise
 function Type.GetClass(typeStruct, add)
     if typeStruct.type == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_CLASS or
        typeStruct.type == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VALUETYPE then
@@ -1725,7 +2080,9 @@ function Type.GetClass(typeStruct, add)
     return nil
 end
 
--- Lấy tên kiểu đơn giản (cho các kiểu cơ bản)
+---Get the simple name of a type (for basic types)
+-- @param typeStruct table Type object
+-- @return string Simple type name
 function Type.GetSimpleName(typeStruct)
     local basicTypes = {
         [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VOID] = "Void",
@@ -1748,7 +2105,10 @@ function Type.GetSimpleName(typeStruct)
     return basicTypes[typeStruct.type] or "Unknown"
 end
 
--- Lấy tên đầy đủ của kiểu
+---Get the full name of a type
+-- @param typeStruct table Type object
+-- @param addNamespaze boolean Whether to include namespace in the name
+-- @return string Full type name
 function Type.GetName(typeStruct, addNamespaze)
     local t = typeStruct.type
     local name = Type.GetSimpleName(typeStruct)
@@ -1787,17 +2147,17 @@ function Type.GetName(typeStruct, addNamespaze)
        t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_MVAR then
        local param = Il2Cpp.Il2CppGenericParameter(typeStruct.data)
        local name = Il2Cpp.Meta:GetStringFromIndex(param.nameIndex)
-       return name--Il2Cpp.Meta:GetStringFromIndex(param.nameIndex)
+       return name
    end
     
     if t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_GENERICINST then
-        -- Đọc generic class
+        -- Read generic class
         local genericClass = Il2Cpp.Il2CppGenericClass(typeStruct.data)
         if genericClass then
-            local typeDef = Il2Cpp.Class(genericClass.type and Il2Cpp.GetPtr(genericClass.type) or genericClass.typeDefinitionIndex)--genericClass.type and Il2Cpp.Type(genericClass.type) or Il2Cpp.Class(genericClass.typeDefinitionIndex);--Il2Cpp.Class(genericClass.type and Il2Cpp.GetPtr(genericClass.type) or genericClass.typeDefinitionIndex)
+            local typeDef = Il2Cpp.Class(genericClass.type and Il2Cpp.GetPtr(genericClass.type) or genericClass.typeDefinitionIndex)
             local baseName = typeDef.name:gsub("`.*", "")
             
-            -- Đọc generic context
+            -- Read generic context
             local context = genericClass.context
             if context then
                 local classInst = context.class_inst
@@ -1821,7 +2181,9 @@ function Type.GetName(typeStruct, addNamespaze)
     return "Unknown"
 end
 
--- Lấy token của type (dùng trong metadata)
+---Get the token of a type (used in metadata)
+-- @param typeStruct table Type object
+-- @return number Type token
 function Type.GetToken(typeStruct)
     if Type.IsGenericInstance(typeStruct) then
         local genericClass = Il2Cpp.Il2CppGenericClass(typeStruct.data)
@@ -1833,18 +2195,24 @@ function Type.GetToken(typeStruct)
     return klass.token
 end
 
--- Kiểm tra có phải generic instance (IL2CPP_TYPE_GENERICINST)
+---Check if a type is a generic instance (IL2CPP_TYPE_GENERICINST)
+-- @param typeStruct table Type object
+-- @return boolean True if the type is a generic instance
 function Type.IsGenericInstance(typeStruct)
     return typeStruct.type == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_GENERICINST
 end
 
--- Kiểm tra có phải generic parameter (IL2CPP_TYPE_VAR hoặc IL2CPP_TYPE_MVAR)
+---Check if a type is a generic parameter (IL2CPP_TYPE_VAR or IL2CPP_TYPE_MVAR)
+-- @param typeStruct table Type object
+-- @return boolean True if the type is a generic parameter
 function Type.IsGenericParameter(typeStruct)
     return typeStruct.type == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VAR or 
            typeStruct.type == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_MVAR
 end
 
--- Lấy generic parameter handle (chỉ dành cho generic parameter)
+---Get generic parameter handle (only for generic parameters)
+-- @param typeStruct table Type object
+-- @return table|nil Generic parameter handle if found, nil otherwise
 function Type.GetGenericParameterHandle(typeStruct)
     if not Type.IsGenericParameter(typeStruct) then
         return nil
@@ -1852,7 +2220,9 @@ function Type.GetGenericParameterHandle(typeStruct)
     return Il2Cpp.Meta.GetGenericParameterFromType(typeStruct)
 end
 
--- Lấy thông tin generic parameter
+---Get generic parameter information
+-- @param typeStruct table Type object
+-- @return table|nil Generic parameter information if found, nil otherwise
 function Type.GetGenericParameterInfo(typeStruct)
     local handle = Type.GetGenericParameterHandle(typeStruct)
     if not handle then
@@ -1861,7 +2231,9 @@ function Type.GetGenericParameterInfo(typeStruct)
     return Il2Cpp.Meta.GetGenericParameterInfo(handle)
 end
 
--- Lấy declaring type của generic parameter
+---Get the declaring type of a generic parameter
+-- @param typeStruct table Type object
+-- @return table|nil Declaring type if found, nil otherwise
 function Type.GetDeclaringType(typeStruct)
     if typeStruct.byref ~= 0 then
         return nil
@@ -1874,7 +2246,9 @@ function Type.GetDeclaringType(typeStruct)
     return klass.declaringType
 end
 
--- Lấy declaring method (chỉ dành cho generic parameter MVAR)
+---Get the declaring method (only for MVAR generic parameters)
+-- @param typeStruct table Type object
+-- @return table|nil Declaring method if found, nil otherwise
 function Type.GetDeclaringMethod(typeStruct)
     if typeStruct.byref ~= 0 then
         return nil
@@ -1885,7 +2259,9 @@ function Type.GetDeclaringMethod(typeStruct)
     return nil
 end
 
--- Lấy generic type definition (chỉ dành cho generic instance)
+---Get the generic type definition (only for generic instances)
+-- @param typeStruct table Type object
+-- @return table Generic type definition
 function Type.GetGenericTypeDefinition(typeStruct)
     if not Type.IsGenericInstance(typeStruct) then
         return typeStruct
@@ -1894,28 +2270,34 @@ function Type.GetGenericTypeDefinition(typeStruct)
     return Type:From(genericClass.type)
 end
 
--- So sánh hai kiểu có bằng nhau không
+---Compare if two types are equal
+-- @param type1 table First type object
+-- @param type2 table Second type object
+-- @return boolean True if types are equal
 function Type.AreEqual(type1, type2)
-    -- Đơn giản: so sánh địa chỉ, hoặc so sánh từng trường
     if type1.address == type2.address then
         return true
     end
-    -- TODO: Triển khai so sánh chi tiết nếu cần
+    -- TODO: Implement detailed comparison if needed
     return false
 end
 
--- Lấy kích thước của kiểu trong bộ nhớ
+---Get the size of a type in memory
+-- @param typeStruct table Type object
+-- @return number Size in bytes
 function Type.GetSize(typeStruct)
     if Type.IsValueType(typeStruct) then
         local klass = Type.GetClass(typeStruct)
         return klass.instance_size
     end
     
-    -- Kiểu tham chiếu có kích thước bằng kích thước con trỏ
+    -- Reference types have pointer size
     return Il2Cpp.pointSize
 end
 
--- Lấy thông tin mảng nếu là kiểu mảng
+---Get array information if the type is an array
+-- @param typeStruct table Type object
+-- @return table|nil Array information if type is an array, nil otherwise
 function Type.GetArrayInfo(typeStruct)
     if not Type.IsArray(typeStruct) then
         return nil
@@ -1943,7 +2325,9 @@ function Type.GetArrayInfo(typeStruct)
     return nil
 end
 
--- Chuyển đổi Il2CppType thành chuỗi mô tả
+---Convert Il2CppType to a descriptive string
+-- @param typeStruct table Type object
+-- @return string Descriptive string representation
 function Type.ToString(typeStruct)
     local name = Type.GetName(typeStruct)
     local flags = {}
@@ -1964,18 +2348,26 @@ function Type.ToString(typeStruct)
 end
 
 return setmetatable(Type, {
+    ---Metatable call handler for Type
+    -- Allows Type to be called as a function
+    -- @param ... any Arguments passed to Type.From
+    -- @return table Type object
     __call = Type.From
 })
 end)__bundle_register("Universalsearcher", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = require "Androidinfo"
 local MainType = AndroidInfo.platform and gg.TYPE_QWORD or gg.TYPE_DWORD
 local pointSize = AndroidInfo.platform and 8 or 4
-    
+
 ---@class Searcher
+---Universal searcher module for locating Il2Cpp and metadata components in memory
 local Searcher = {
     searchWord = ":EnsureCapacity",
 
-    ---@param self Searcher
+    ---Find global metadata in memory using various search strategies
+    -- @param self Searcher The Searcher instance
+    -- @return number Start address of global metadata
+    -- @return number End address of global metadata
     FindGlobalMetaData = function(self)
         gg.clearResults()
         gg.setRanges(gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS |
@@ -2005,7 +2397,10 @@ local Searcher = {
         return type(globalMetadata) == "table" and globalMetadata[1].start, globalMetadata[#globalMetadata]['end'] or 0, 0
     end,
 
-    ---@param self Searcher
+    ---Check if global metadata contains valid data by searching for the signature
+    -- @param self Searcher The Searcher instance
+    -- @param globalMetadata table Table of memory ranges to check
+    -- @return boolean True if valid data is found, false otherwise
     IsValidData = function(self, globalMetadata)
         if #globalMetadata ~= 0 then
             gg.searchNumber(self.searchWord, gg.TYPE_BYTE, false, gg.SIGN_EQUAL, globalMetadata[1].start,
@@ -2018,6 +2413,9 @@ local Searcher = {
         return false
     end,
 
+    ---Find Il2Cpp library in memory using various search strategies
+    -- @return number Start address of Il2Cpp library
+    -- @return number End address of Il2Cpp library
     FindIl2cpp = function()
         local il2cpp = gg.getRangesList('libil2cpp.so')
         if #il2cpp == 0 then
@@ -2049,50 +2447,76 @@ local Searcher = {
         return il2cpp[1].start, il2cpp[#il2cpp]['end']
     end,
 
+    ---Locate and initialize Il2Cpp metadata registration structures
+    -- @return table Table containing metadata registration information
     Il2CppMetadataRegistration = function()
+        ---Check if an address points to a valid image name
+        -- @param addr number Memory address to check
+        -- @return string|boolean Image name if valid, false otherwise
         local function isImage(addr)
             local imageStr = Il2Cpp.Utf8ToString(Il2Cpp.GetPtr(addr))
             local check = string.find(imageStr, ".-%.dll") or string.find(imageStr, "__Generated")
             return check and imageStr
         end
+        
+        -- Set pointer sizes based on version and platform
         Il2Cpp.classPointer = Il2Cpp.Version < 27 and (AndroidInfo.platform and 24 or 12) or (AndroidInfo.platform and 40 or 20);
         Il2Cpp.imagePointer = Il2Cpp.Version < 27 and (AndroidInfo.platform and 72 or 36) or (AndroidInfo.platform and 24 or 12);
+        
+        -- Get global metadata range
         local gmt = gg.getRangesList("global-metadata.dat");
 	    local gmt = ((gmt and #gmt > 0) and gmt[1].start) or Il2Cpp.Meta.metaStart
+	    
+	    -- Search for global metadata reference in Il2Cpp memory
 	    gg.clearResults();
 	    gg.setRanges(16 | 32);
 	    gg.searchNumber(gmt, Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
+	    
+	    -- Handle 64-bit Android SDK 30+ special case
 	    if gg.getResultsCount() == 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
             gg.searchNumber(tostring(gmt | 0xB400000000000000), Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
         end
+        
         if gg.getResultsCount() > 0 then
             local t = gg.getResults(1)
             gg.clearResults();
             local address = t[1].address
+            
+            -- Find the start of the registration structure
             while true do
                 local Range = gg.getValuesRange({{address = Il2Cpp.GetPtr(address), flags = MainType}})[1]
                 address = address - pointSize
                 if Range == 'Cd' then break end
             end
+            
+            -- Extract registration pointers
             local g_code = Il2Cpp.GetPtr(address)
             local g_meta = Il2Cpp.GetPtr(address + pointSize)
             local classCount = gg.getValues({{address = g_meta + pointSize * 12, flags = MainType}})[1].value
+            
+            -- Validate class count
             if classCount == 0 or classCount < 0 then
                 error("classCount: "..classCount)
             end
             
+            -- Find image definitions
             local imgAddr = t[1].address + Il2Cpp.imagePointer
             local results = gg.getValues({
                 {address=(Il2Cpp.GetPtr(imgAddr) + 16),flags=Il2Cpp.MainType},
                 {address=Il2Cpp.GetPtr(t[1].address + Il2Cpp.classPointer),flags=Il2Cpp.MainType}});
+                
+            -- Handle special case for empty pointer
             if Il2Cpp.GetPtr(results[1].value) == 0 then
                 results[1] = gg.getValues({{address=(Il2Cpp.GetPtr(imgAddr) + 16 + 8),flags=Il2Cpp.MainType}})[1];
             end
+            
+            -- Set image definitions
             local addr = results[1].address
             if isImage(Il2Cpp.GetPtr(addr)) then
                 Il2Cpp.imageDef = Il2Cpp.GetPtr(addr)
                 Il2Cpp.imageCount = Il2Cpp.GetPtr(imgAddr - Il2Cpp.pointSize)
             else  
+                -- Alternative search for image definitions
                 local imgAddr = t[1].address + Il2Cpp.classPointer
                 for i = 1, 100 do
                     local addr = imgAddr + (i * Il2Cpp.pointSize)
@@ -2103,6 +2527,8 @@ local Searcher = {
                     end
                 end
             end
+            
+            -- Calculate image size
             for i = 1, 100 do
                 local addr = Il2Cpp.imageDef + (i * Il2Cpp.pointSize)
                 if isImage(addr) then
@@ -2110,12 +2536,13 @@ local Searcher = {
                     break
                 end
             end
+            
+            -- Set type definition pointer
             Il2Cpp.typeDef = results[2].address
         end
         
-        
+        -- Set type count and registration pointers
         Il2Cpp.typeCount = classCount or 0
-        
         Il2Cpp.metaReg = g_meta or 0
         Il2Cpp.il2cppReg = g_code or 0
         
@@ -2128,6 +2555,5 @@ local Searcher = {
 }
 
 return Searcher
-
 end)
 return __bundle_require("Il2CppGG")

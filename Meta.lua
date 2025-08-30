@@ -1,6 +1,13 @@
+---@class Meta
+---Module for handling metadata operations in Il2Cpp
 local Meta = {}
     
 
+---Get pointers to a string in memory by searching for the string pattern
+-- @param name string The string name to search for
+-- @param addList any Additional list parameter (unused in current implementation)
+-- @return table Table of search results containing addresses pointing to the string
+-- @error Throws an error if the class is not found in global-metadata
 function Meta.GetPointersToString(name, addList)
     gg.clearResults()
     gg.setRanges(-1)
@@ -21,11 +28,17 @@ function Meta.GetPointersToString(name, addList)
     return res
 end
 
+---Get string from metadata using string index
+-- @param index number String index in metadata
+-- @return string Decoded UTF-8 string from metadata
 function Meta:GetStringFromIndex(index)
     local stringDefinitions = Meta.Header.stringOffset
     return Il2Cpp.Utf8ToString(stringDefinitions + index)
 end
 
+---Get generic container from metadata by index
+-- @param index number Generic container index
+-- @return table Il2CppGenericContainer object
 function Meta:GetGenericContainer(index)
     local index = index
     if Meta.Header.genericContainersSize > index then
@@ -34,6 +47,9 @@ function Meta:GetGenericContainer(index)
     return Il2Cpp.Il2CppGenericContainer(index)
 end
 
+---Get generic parameter from metadata by index
+-- @param index number Generic parameter index
+-- @return table Il2CppGenericParameter object
 function Meta:GetGenericParameter(index)
     local index = index
     if Meta.Header.genericParametersSize > index then
@@ -42,16 +58,20 @@ function Meta:GetGenericParameter(index)
     return Il2Cpp.Il2CppGenericParameter(index)
 end
 
+---Get method definition from metadata by index
+-- @param index number Method definition index
+-- @return table Il2CppMethodDefinition object
 function Meta:GetMethodDefinition(index)
     local index = Meta.Header.methodsOffset + (index * Il2Cpp.Il2CppMethodDefinition.size)
     return Il2Cpp.Il2CppMethodDefinition(index)
 end
 
+---Get parameter definition from metadata by index
+-- @param index number Parameter definition index
+-- @return table Il2CppParameterDefinition object
 function Meta:GetParameterDefinition(index)
     local index = Meta.Header.parametersOffset + (index * Il2Cpp.Il2CppParameterDefinition.size)
     return Il2Cpp.Il2CppParameterDefinition(index)
 end
-
-
 
 return Meta

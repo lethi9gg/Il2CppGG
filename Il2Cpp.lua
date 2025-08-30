@@ -1,12 +1,14 @@
--- Gameguardian
+---@class Il2Cpp
+---Main Il2Cpp module providing core functionality and type definitions
 local x64 = gg.getTargetInfo().x64
 local pointer = x64 and gg.TYPE_QWORD or gg.TYPE_DWORD
 local MainType = pointer
 local pointSize = x64 and 8 or 4
 local Struct = require "Struct"
 local Version = require "Version"
---local Universalsearcher = require "Universalsearcher"
 
+---@class Il2CppTable
+---Main Il2Cpp table containing platform information and core functionality
 Il2Cpp = {
     x64 = x64,
     pointer = pointer,
@@ -14,7 +16,8 @@ Il2Cpp = {
     pointSize = pointSize
 }
 
-
+---@class TypeInfo
+---Table containing type information for various data types
 Il2Cpp.type = {
     Boolean = { size = 1, flags = 1 },
     Byte    = { size = 1, flags = 1 },
@@ -34,22 +37,43 @@ Il2Cpp.type = {
     Object = { size = (Il2Cpp.x64 and 0x10 or 0x8), flags = pointer}
 }
 
+---Get pointer value from memory address
+-- @param address number Memory address to read from
+-- @return number Pointer value
 function Il2Cpp.GetPtr(address)
     return Il2Cpp.FixValue(gg.getValues({{address = Il2Cpp.FixValue(address), flags = Il2Cpp.MainType}})[1].value)
 end
+
+---Fix value by masking platform-specific bits
+-- @param val number Value to fix
+-- @return number Fixed value
 function Il2Cpp.FixValue(val)
 	return (x64 and (val & 0x00FFFFFFFFFFFFFF)) or (val & 0xFFFFFFFF);
 end
 
+---Get value from memory address with optional flags
+-- @param address number|table Memory address or table of addresses
+-- @param flags number|nil Memory flags (optional)
+-- @return any Value or table of values
 function Il2Cpp.gV(address, flags)
 	return (type(address) == "table" and gg.getValues(address)) or gg.getValues({{address=address,flags=flags or Il2Cpp.MainType}})[1].value;
 end
 
+---Align offset to specified alignment
+-- @param offset number Offset to align
+-- @param align_to number Alignment value
+-- @return number Aligned offset
 function Il2Cpp.align(offset, align_to)
     return ((offset + align_to - 1) / align_to) * align_to
 end
 
+---Cache for UTF-8 string conversion
 local Utf8ToStringCache = {}
+
+---Convert UTF-8 encoded memory to string
+-- @param Address number Memory address of UTF-8 string
+-- @param length number|nil Length of string (optional, if not provided reads until null terminator)
+-- @return string Decoded string
 Il2Cpp.Utf8ToString = function(Address, length)
     if Utf8ToStringCache[Address] then
         return Utf8ToStringCache[Address]
@@ -80,6 +104,10 @@ Il2Cpp.Utf8ToString = function(Address, length)
     end
 end
 
+---Create a class structure for GameGuardian with proper field alignment
+-- @param fields table Table of field definitions
+-- @param version number Il2Cpp version
+-- @return table Class structure with proper alignment
 function Il2Cpp.classGG(fields, version)
     local offset = 0
     local klass = {}
@@ -152,6 +180,8 @@ function Il2Cpp.classGG(fields, version)
     })
 end
 
+---@class Il2CppFlags
+---Il2Cpp flags and attributes for methods and fields
 Il2Cpp.Il2CppFlags = {
     Method = {
         METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK = 0x0007,
@@ -181,8 +211,8 @@ Il2Cpp.Il2CppFlags = {
     }
 }
 
-
--- Il2CppTypeEnum
+---@class Il2CppTypeEnum
+---Enumeration of Il2Cpp type values
 Il2Cpp.Il2CppTypeEnum = {
     IL2CPP_TYPE_END = 0x00,
     IL2CPP_TYPE_VOID = 0x01,
@@ -200,7 +230,7 @@ Il2Cpp.Il2CppTypeEnum = {
     IL2CPP_TYPE_R8 = 0x0d,
     IL2CPP_TYPE_STRING = 0x0e,
     IL2CPP_TYPE_PTR = 0x0f,
-    IL2CPP_TYPE_BYREF = 0x10,
+    IL2Cpp_TYPE_BYREF = 0x10,
     IL2CPP_TYPE_VALUETYPE = 0x11,
     IL2CPP_TYPE_CLASS = 0x12,
     IL2CPP_TYPE_VAR = 0x13,
@@ -224,6 +254,9 @@ Il2Cpp.Il2CppTypeEnum = {
 }
 
 return setmetatable(Struct, {
+    ---Metatable call handler for Struct
+    -- Initializes Il2Cpp structures based on version
+    -- @return table Il2Cpp API with all modules loaded
     __call = function(self)
         Il2Cpp.Version = Version()
         local default = Il2Cpp.Version
@@ -244,13 +277,13 @@ return setmetatable(Struct, {
             default = 29.1
         end
         
-        -- Truyền version vào các struct để lọc field
+        -- Pass version to structs to filter fields
         for k, v in pairs(self) do
             v.name = k
             Il2Cpp[k] = Il2Cpp.classGG(v, default)
         end
       
-        
+        -- Load all Il2Cpp API modules
         local api = {
             Meta = require "Meta",
             Class = require "Class",
@@ -261,7 +294,6 @@ return setmetatable(Struct, {
             Type = require "Type",
             Universalsearcher = require "Universalsearcher"
         }
-        
         
         return setmetatable(api, {
             __index = Il2Cpp

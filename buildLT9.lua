@@ -1,8 +1,14 @@
+---@class BuildLT9
+---Module bundler for Il2CppGG that combines multiple Lua modules into a single file
 local buildLT9, script_build, script_cache, requireold = {
    name = "Il2CppGG",
    input = "init",
    output = "build/Il2CppGG.lua"
 }, {}, {}, require
+
+---Custom require function that caches loaded modules and collects source code for bundling
+-- @param Name string Module name to require
+-- @return any Required module
 function require(Name)
     local mod = package.loaded[Name]
     if mod ~= nil then return mod end
@@ -25,6 +31,10 @@ function require(Name)
     end
     error("Failed to load script " .. name)
 end
+
+---Build function that creates a bundled Lua file from multiple modules
+-- @param info table Build information containing name, input, and output
+-- @return string Build status message
 function build(info)
     local input = info.input:gsub("%.", "/")
     local output = info.output
@@ -46,4 +56,5 @@ function build(info)
     file:write('\nreturn __bundle_require("' .. info.name .. '")'):close()
     return os.rename(output, output) and output .. " --> OK" or output .. " --> ERROR"
 end
+
 print( build(buildLT9) )

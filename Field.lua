@@ -1,34 +1,48 @@
 --local Il2Cpp = require("Il2Cpp")()
 
+---@class Field
+---Module for handling Il2Cpp field operations and metadata
 local Field = {}
 
--- Lấy tên của field
+---Get the name of a field
+-- @param field table The field object
+-- @return string Field name
 function Field.GetName(field)
-    return field.name--Il2Cpp.Utf8ToString(field.name)
+    return field.name
 end
 
--- Lấy parent class của field
+---Get the parent class of a field
+-- @param field table The field object
+-- @return table Parent class object
 function Field.GetParent(field)
     return Il2Cpp.Class(field.parent)
 end
 
--- Lấy offset của field
+---Get the offset of a field
+-- @param field table The field object
+-- @return number Field offset
 function Field.GetOffset(field)
     return field.offset
 end
 
--- Lấy type của field
+---Get the type of a field
+-- @param field table The field object
+-- @return table Type object
 function Field.GetType(field)
     return Il2Cpp.Type(field.type)
 end
 
--- Kiểm tra xem field có phải là instance field
+---Check if a field is an instance field
+-- @param field table The field object
+-- @return boolean True if the field is an instance field
 function Field.IsInstance(field)
     local attrs = Field.GetType(field).attrs
     return bit32.band(attrs, 0x0010) == 0 -- FIELD_ATTRIBUTE_STATIC = 0x0010
 end
 
--- Kiểm tra xem field có phải là static field
+---Check if a field is a normal static field
+-- @param field table The field object
+-- @return boolean True if the field is a normal static field
 function Field.IsNormalStatic(field)
     if not bit32.band(field.type.attrs, 0x0010) then -- FIELD_ATTRIBUTE_STATIC
         return false
@@ -42,7 +56,11 @@ function Field.IsNormalStatic(field)
     return true
 end
 
--- Lấy giá trị của instance field
+---Get the value of an instance field
+-- @param field table The field object
+-- @param obj number Object address
+-- @return any Field value
+-- @error Throws an error if the field is not an instance field
 function Field.GetValue(field, obj)
     if not Field.IsInstance(field) then
         error("Field must be an instance field")
@@ -52,7 +70,11 @@ function Field.GetValue(field, obj)
     return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
 end
 
--- Đặt giá trị cho instance field
+---Set the value of an instance field
+-- @param field table The field object
+-- @param obj number Object address
+-- @param value any New value to set
+-- @error Throws an error if the field is not an instance field
 function Field.SetValue(field, obj, value)
     if not Field.IsInstance(field) then
         error("Field must be an instance field")
@@ -62,7 +84,10 @@ function Field.SetValue(field, obj, value)
     gg.setValues({{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, value = value}})
 end
 
--- Lấy giá trị của static field
+---Get the value of a static field
+-- @param field table The field object
+-- @return any Static field value
+-- @error Throws an error if the field is not a normal static field
 function Field.StaticGetValue(field)
     if not Field.IsNormalStatic(field) then
         error("Field must be a normal static field")
@@ -72,7 +97,10 @@ function Field.StaticGetValue(field)
     return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
 end
 
--- Đặt giá trị cho static field
+---Set the value of a static field
+-- @param field table The field object
+-- @param value any New value to set
+-- @error Throws an error if the field is not a normal static field
 function Field.StaticSetValue(field, value)
     if not Field.IsNormalStatic(field) then
         error("Field must be a normal static field")
@@ -82,6 +110,9 @@ function Field.StaticSetValue(field, value)
     gg.setValues({{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, value = value}})
 end
 
+---Create a Field object from address or name
+-- @param addr_name string|number Field name or address
+-- @return table Field object or array of field objects
 function Field:From(addr_name)
     
     local field = {}
@@ -111,4 +142,10 @@ function Field:From(addr_name)
     return #field == 1 and field[1] or field
 end
 
-return setmetatable(Field, {__call = Field.From})
+return setmetatable(Field, {
+    ---Metatable call handler for Field
+    -- Allows Field to be called as a function
+    -- @param ... any Arguments passed to Field.From
+    -- @return table Field object or array of field objects
+    __call = Field.From
+})
