@@ -29,13 +29,17 @@ Il2CppGG is a comprehensive toolkit written in Lua for working with Il2Cpp struc
 
 ## 🚀 Installation
 
-1. Download the [build/Il2CppGG.lua](https://github.com/lethi9gg/Il2CppGG/blob/main/build/Il2CppGG.lua) file from the repository
+1. Download the [build/Il2CppGG.lua](/build/) file from the repository
 2. Place it in GameGuardian's scripts folder
 3. In GameGuardian, load the `Il2CppGG.lua` script
 
 ## ⚒️ Build
 
 - In GameGuardian, run the `buildLT9.lua` script --> build/Il2CppGG.lua
+
+## 🗂️Wiki
+
+- All documentation about the module is available on the [wiki](../../wiki/)
 
 ## 📂 Project Structure
 
