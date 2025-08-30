@@ -37,9 +37,6 @@ Il2CppGG is a comprehensive toolkit written in Lua for working with Il2Cpp struc
 
 - In GameGuardian, run the `buildLT9.lua` script --> build/Il2CppGG.lua
 
-## 🗂️Wiki
-
-- All documentation about the module is available on the [wiki](../../wiki/)
 
 ## 📂 Project Structure
 
@@ -587,3 +584,9 @@ This project is licensed for educational and research purposes. Please respect t
 ---
 
 **Disclaimer**: This tool is for educational purposes only. Use it responsibly and only on applications you own or have permission to analyze.
+
+---
+
+All documentation about the module is available on the [wiki](../../wiki/)
+
+---
