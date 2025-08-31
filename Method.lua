@@ -1,6 +1,6 @@
 ---@class Method
 ---Module for handling Il2Cpp method operations and metadata
-local Method = {}
+local Method = require "Hook"
 
 -- Version-specific constants for method parameter handling
 Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
@@ -37,14 +37,17 @@ end
 ---Get the parameters of a method
 -- @param method table The method object
 -- @return table Array of parameter information
-function Method.GetParam(method)
+function Method.GetParam(method, dump)
     if type(method.parameters) == "table" then
         return method.parameters
     end
-    local methodDef = method.methodMetadataHandle or method.methodDefinition
-    local paramStart = Il2Cpp.Meta.Header.parametersOffset + Il2Cpp.gV(methodDef + Method.parameterStart, 4) * Method.parameterSize
+    --local methodDef = method.methodMetadataHandle or method.methodDefinition
+    --local paramStart = Il2Cpp.Meta.Header.parametersOffset + Il2Cpp.gV(methodDef + Method.parameterStart, 4) * Method.parameterSize
+    local methodDef = Il2Cpp.Il2CppMethodDefinition(method.methodMetadataHandle or method.methodDefinition)
+    
     method.parameters = {}
     for index = 0, Method.GetParamCount(method) - 1 do
+        --[[
         paramStart = paramStart + (index * Method.parameterSize)
         local token = paramStart + 4
         local paramType = paramStart + Method.parameterSize - 4
@@ -54,8 +57,11 @@ function Method.GetParam(method)
             name = Il2Cpp.Meta:GetStringFromIndex(paramInfo[1].value),
             token = paramInfo[3].value
         }
+        ]]
+        local paramDef = Il2Cpp.Param(methodDef.parameterStart + index)
+        method.parameters[index + 1] = dump and tostring(paramDef) or paramDef
     end
-    return method.parameters
+    return dump and ("(" .. table.concat(method.parameters, ", ") .. ")") or method.parameters
 end
 
 ---Check if a method is an instance method
@@ -100,18 +106,54 @@ function Method.IsGenericInstance(method)
     return method.is_inflated ~= 0 and method.is_generic == 0
 end
 
----Create a Method object from address
--- @param addrMethodInfo number Address of the method info
+function Method.GetIndex(method)  
+    return ((method.methodMetadataHandle or method.methodDefinition) - Il2Cpp.Meta.Header.methodsOffset) / Il2Cpp.Il2CppMethodDefinition.size
+end  
+
+function Method.GetClass(method)
+    if type(method.klass) == "number" then
+        method.klass = Il2Cpp.Class(method.klass)
+    end
+    return method.klass
+end  
+
+---Create a Method object from address or name
+-- @param addrMethodInfo number Address of the method info or name
 -- @param addList any Additional parameter (unused in current implementation)
 -- @return table Method object
-function Method:From(addrMethodInfo, addList)
-    local method = Il2Cpp.MethodInfo(addrMethodInfo, addList)
-    method.address = addrMethodInfo
-    return setmetatable(method, {
-        __index = Method,
-        __name = method.name
-    })
+function Method:From(addr_name)
+    local method = {}
+    if type(addr_name) == "string" then
+        local res = Il2Cpp.Meta.GetPointersToString(addr_name)
+        for i, v in ipairs(res) do
+            local addr = Il2Cpp.GetPtr(v.address + (Il2Cpp.pointSize * 1))
+            local IsClass = Il2Cpp.Class.IsClassInfo(addr)
+            local addr = Il2Cpp.GetPtr(v.address + (Il2Cpp.pointSize * 2))
+            local IsType = Il2Cpp.Type(addr)
+            if IsClass and IsType then
+                v.address = v.address - (Il2Cpp.Version < 29 and Il2Cpp.pointSize * 2 or Il2Cpp.pointSize * 3)
+                local kls = Il2Cpp.MethodInfo(v.address)
+                kls.address = v.address
+                local res = setmetatable(kls, {
+                    __index = Method,
+                    __name = kls.name
+                })
+                method[#method+1] = res
+            end
+        end
+    else
+        method = Il2Cpp.MethodInfo(addr_name)
+        method.address = addr_name
+        return setmetatable(method, {
+            __index = Method,
+            __name = method.name
+        })
+    end
+    return #method == 1 and method[1] or method
 end
+
+
+
 
 return setmetatable(Method, {
     ---Metatable call handler for Method

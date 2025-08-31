@@ -4,7 +4,7 @@ local Structs = {
     ---@class Il2CppGlobalMetadataHeader
     ---Global metadata header structure containing offsets and sizes of various metadata sections
     Il2CppGlobalMetadataHeader = {
-        { "sanity", "UInt32", version = {max = 24.1} }, -- Sanity check value
+        { "sanity", "UInt32"}, -- Sanity check value
         { "version", "Int32" }, -- Metadata version
         { "stringLiteralOffset", "UInt32" }, -- Offset to string literals
         { "stringLiteralSize", "Int32" }, -- Size of string literals section
@@ -78,6 +78,103 @@ local Structs = {
         { "windowsRuntimeStringsSize", "Int32", version = {min = 27} }, -- Size of Windows Runtime strings (≥ v27)
         { "exportedTypeDefinitionsOffset", "UInt32", version = {min = 24} }, -- Offset to exported type definitions (≥ v24)
         { "exportedTypeDefinitionsSize", "Int32", version = {min = 24} }, -- Size of exported type definitions (≥ v24)
+    },
+    
+    Il2CppMetadataRegistration = {
+        { "genericClassesCount", "Pointer" },
+        { "genericClasses", "Pointer" },
+        { "genericInstsCount", "Pointer" },
+        { "genericInsts", "Pointer" },
+        { "genericMethodTableCount", "Pointer" },
+        { "genericMethodTable", "Pointer" },
+        { "typesCount", "Pointer" },
+        { "types", "Pointer" },
+        { "methodSpecsCount", "Pointer" },
+        { "methodSpecs", "Pointer" },
+        { "methodReferencesCount", "Pointer", version = { max = 16 } },
+        { "methodReferences", "Pointer", version = { max = 16 } },
+        { "fieldOffsetsCount", "Pointer" },
+        { "fieldOffsets", "Pointer" },
+        { "typeDefinitionsSizesCount", "Pointer" },
+        { "typeDefinitionsSizes", "Pointer" },
+        { "metadataUsagesCount", "Pointer", version = { min = 19 } },
+        { "metadataUsages", "Pointer", version = { min = 19 } }
+    },
+    
+    -- Il2CppCodeRegistration
+    Il2CppCodeRegistration = {
+        { "methodPointersCount", "Pointer", version = { max = 24.1} },
+        { "methodPointers", "Pointer", version = { max = 24.1} },
+        { "delegateWrappersFromNativeToManagedCount", "Pointer", version = { max = 21}},
+        { "delegateWrappersFromNativeToManaged", "Pointer", version = { max = 21} },
+        { "reversePInvokeWrapperCount", "Pointer", version = { min = 22}},
+        { "reversePInvokeWrappers", "Pointer", version = { min = 22}},
+        { "delegateWrappersFromManagedToNativeCount", "Pointer", version = { max = 22} },
+        { "delegateWrappersFromManagedToNative", "Pointer", version = { max = 22} },
+        { "marshalingFunctionsCount", "Pointer", version = { max = 22} },
+        { "marshalingFunctions", "Pointer", version = { max = 22} },
+        { "ccwMarshalingFunctionsCount", "Pointer", version = { min = 21, max = 22} },
+        { "ccwMarshalingFunctions", "Pointer", version = { min = 21, max = 22} },
+        { "genericMethodPointersCount", "Pointer" },
+        { "genericMethodPointers", "Pointer" },
+        { "genericAdjustorThunks", "Pointer", version = {{ min = 24.5, max = 24.5}, { min = 27.1}} },
+        { "invokerPointersCount", "Pointer" },
+        { "invokerPointers", "Pointer" },
+        { "customAttributeCount", "Pointer", version = { max = 24.5}},
+        { "customAttributeGenerators", "Pointer", version = { max = 24.5}},
+        { "guidCount", "Pointer", version = { min = 21, max = 22}},
+        { "guids", "Pointer", version = { min = 21, max = 22}},
+        { "unresolvedVirtualCallCount", "Pointer", version = { min = 22}},
+        { "unresolvedVirtualCallPointers", "Pointer", version = { min = 22}},
+        { "unresolvedInstanceCallPointers", "Pointer", version = { min = 29.1} },
+        { "unresolvedStaticCallPointers", "Pointer", version = { min = 29.1} },
+        { "interopDataCount", "Pointer", version = { min = 23} },
+        { "interopData", "Pointer", version = { min = 23}},
+        { "windowsRuntimeFactoryCount", "Pointer", version = { min = 24.3}},
+        { "windowsRuntimeFactoryTable", "Pointer", version = { min = 24.3} },
+        { "codeGenModulesCount", "Pointer", version = { min = 24.2 }},
+        { "codeGenModules", "Pointer", version = { min = 24.2 } }
+    },
+    
+    -- Il2CppTypeDefinition
+    Il2CppTypeDefinition = {
+        { "nameIndex", "UInt32" },
+        { "namespaceIndex", "UInt32" },
+        { "customAttributeIndex", "Int32", version = { max = 24}},
+        { "byvalTypeIndex", "Int32" },
+        { "byrefTypeIndex", "Int32", version = { max = 24.5} },
+        { "declaringTypeIndex", "Int32" },
+        { "parentIndex", "Int32" },
+        { "elementTypeIndex", "Int32" },
+        { "rgctxStartIndex", "Int32", version = { max = 24.1} },
+        { "rgctxCount", "Int32", version = { max = 24.1} },
+        { "genericContainerIndex", "Int32" },
+        { "delegateWrapperFromManagedToNativeIndex", "Int32", version = { max = 22} },
+        { "marshalingFunctionsIndex", "Int32", version = { max = 22 }},
+        { "ccwFunctionIndex", "Int32", version = { min = 21, max = 22} },
+        { "guidIndex", "Int32", version = { min = 21, max = 22} },
+        { "flags", "UInt32" },
+        { "fieldStart", "Int32" },
+        { "methodStart", "Int32" },
+        { "eventStart", "Int32" },
+        { "propertyStart", "Int32" },
+        { "nestedTypesStart", "Int32" },
+        { "interfacesStart", "Int32" },
+        { "vtableStart", "Int32" },
+        { "interfaceOffsetsStart", "Int32" },
+        { "method_count", "UInt16" },
+        { "property_count", "UInt16" },
+        { "field_count", "UInt16" },
+        { "event_count", "UInt16" },
+        { "nested_type_count", "UInt16" },
+        { "vtable_count", "UInt16" },
+        { "interfaces_count", "UInt16" },
+        { "interface_offsets_count", "UInt16" },
+        { "bitfield", "UInt32" },
+        { "token", "UInt32", version = { min = 19 } },
+        
+        IsValueType = function(this) return bit32.band(this.bitfield, 0x1) == 1 end,
+        IsEnum = function(this) return bit32.band(bit32.rshift(this.bitfield, 1), 0x1) == 1 end
     },
 
     ---@class VirtualInvokeData
@@ -251,6 +348,15 @@ Structs.MethodInfo = {
     { "bitflags", "UInt8" } -- Method bitflags
 }
 
+Structs.PropertyInfo = {
+    { "parent", "Pointer" },
+    { "name", "Pointer" },
+    { "get", "Pointer" },
+    { "set", "Pointer" },
+    { "attrs", "UInt32" },
+    { "token", "UInt32" }
+}
+
 ---@class Il2CppGenericContext
 ---Generic context structure
 Structs.Il2CppGenericContext = {
@@ -335,5 +441,42 @@ Structs.Il2CppParameterDefinition = {
     { "customAttributeIndex", "Int32", version = {max = 24} }, -- Custom attribute index (≤ v24)
     { "typeIndex", "Int32" } -- Type index
 }
+
+
+-- Il2CppGenericMethodIndices
+Structs.Il2CppGenericMethodIndices = {
+    { "methodIndex", "Int32" },
+    { "invokerIndex", "Int32" },
+    { "adjustorThunk", "Int32", version = {{ min = 24.5, max = 24.5 }, { min = 27.1 }} }
+}
+
+-- Il2CppGenericMethodFunctionsDefinitions
+Structs.Il2CppGenericMethodFunctionsDefinitions = {
+    { "genericMethodIndex", "Int32" },
+    { "indices", Structs.Il2CppGenericMethodIndices }
+}
+
+
+-- Il2CppMethodSpec
+Structs.Il2CppMethodSpec = {
+    { "methodDefinitionIndex", "Int32" },
+    { "classIndexIndex", "Int32" },
+    { "methodIndexIndex", "Int32" }
+}
+
+
+Structs.Il2CppParameterDefaultValue = {
+    { "parameterIndex", "Int32" },
+    { "typeIndex", "Int32" },
+    { "dataIndex", "Int32" }
+}
+
+Structs.Il2CppFieldDefaultValue = {
+    { "fieldIndex", "Int32" },
+    { "typeIndex", "Int32" },
+    { "dataIndex", "Int32" }
+    
+}
+
 
 return Structs

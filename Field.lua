@@ -1,5 +1,3 @@
---local Il2Cpp = require("Il2Cpp")()
-
 ---@class Field
 ---Module for handling Il2Cpp field operations and metadata
 local Field = {}
@@ -72,16 +70,20 @@ end
 
 ---Set the value of an instance field
 -- @param field table The field object
--- @param obj number Object address
+-- @param obj table Object address
 -- @param value any New value to set
 -- @error Throws an error if the field is not an instance field
 function Field.SetValue(field, obj, value)
     if not Field.IsInstance(field) then
         error("Field must be an instance field")
     end
-    local address = obj + field.offset
-    local tInfo = Il2Cpp.type[field.type.type]
-    gg.setValues({{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, value = value}})
+    local tInfo = Il2Cpp.type[tostring(field:GetType())]
+    local results = {}
+    for i, v in ipairs(obj) do
+        results[#results+1] = {address = v.address + field.offset, flags = tInfo and tInfo.flags or Il2Cpp.MainType, value = value}
+    end
+    gg.setValues(results)
+    return results
 end
 
 ---Get the value of a static field
@@ -114,7 +116,6 @@ end
 -- @param addr_name string|number Field name or address
 -- @return table Field object or array of field objects
 function Field:From(addr_name)
-    
     local field = {}
     if type(addr_name) == "string" then
         local res = Il2Cpp.Meta.GetPointersToString(addr_name)

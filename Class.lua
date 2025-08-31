@@ -44,6 +44,14 @@ function Class.GetParent(klass)
     return Class(klass.parent)
 end
 
+function Class.IsValueType(klass)
+    return klass:GetParent():GetName() == "ValueType"
+end
+
+function Class.IsEnum(klass)
+    return klass:GetParent():GetName() == "Enum"
+end
+
 ---Get all fields of a class
 -- @param klass table The class object
 -- @return table Array of field objects
@@ -54,7 +62,7 @@ function Class.GetFields(klass)
     local field
     while iter < klass.field_count do
         field = Il2Cpp.Field(klass.fields + iter * Il2Cpp.FieldInfo.size)
-        field.type = field:GetType()
+        --field.type = field:GetType()
         fields[#fields + 1] = field
         iter = iter + 1
     end
@@ -84,9 +92,9 @@ function Class.GetMethods(klass)
     local iter = 0
     local method
     while iter < klass.method_count do
-        method = Il2Cpp.Method(Il2Cpp.gV(klass.methods + iter * Il2Cpp.pointSize, Il2Cpp.pointer))
-        method.parameters = method:GetParam()
-        method.return_type = method:GetReturnType()
+        method = Il2Cpp.Method(Il2Cpp.GetPtr(klass.methods + iter * Il2Cpp.pointSize))
+        --method.parameters = method:GetParam()
+        --method.return_type = method:GetReturnType()
         methods[#methods + 1] = method
         iter = iter + 1
     end
@@ -147,16 +155,33 @@ end
 -- @param klass table The class object
 -- @return table Array of interface class objects
 function Class.GetInterfaces(klass)
+    if type(klass.implementedInterfaces) == "table" then return klass.implementedInterfaces end
     local interfaces = {}
     local iter = 0
     local interface
-    while true do
-        interface = Il2Cpp.gV(klass.implementedInterfaces + iter * Il2Cpp.pointSize, Il2Cpp.pointer)
-        if interface == 0 then break end
-        interfaces[#interfaces + 1] = Il2Cpp.Il2CppClass(interface)
+    while iter < klass.interfaces_count do
+        interface = Il2Cpp.GetPtr(klass.implementedInterfaces + iter * Il2Cpp.pointSize)
+        interfaces[#interfaces + 1] = Class(interface)
         iter = iter + 1
     end
+    klass.implementedInterfaces = interfaces
     return interfaces
+end
+
+-- PropertyInfo
+
+function Class.GetPropertys(klass)
+    if type(klass.properties) == "table" then return klass.properties end
+    local properties = {}
+    local iter = 0
+    local propertie
+    while iter < klass.property_count do
+        propertie = Il2Cpp.PropertyInfo(klass.properties + iter * Il2Cpp.PropertyInfo.size)
+        properties[#properties + 1] = propertie
+        iter = iter + 1
+    end
+    klass.properties = properties
+    return properties
 end
 
 ---Get the type definition index of a class
@@ -256,6 +281,10 @@ function Class:From(addr_name_index, add)
     end
     self.__cache[addr_name_index] = #klass == 1 and klass[1] or klass
     return self.__cache[addr_name_index]
+end
+
+function Class.Dump(klass, config)
+    return Il2Cpp.Dump(klass, config)
 end
 
 return setmetatable(Class, {

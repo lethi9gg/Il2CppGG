@@ -109,6 +109,7 @@ end
 ---Get the simple name of a type (for basic types)
 -- @param typeStruct table Type object
 -- @return string Simple type name
+
 function Type.GetSimpleName(typeStruct)
     local basicTypes = {
         [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VOID] = "Void",
@@ -127,8 +128,28 @@ function Type.GetSimpleName(typeStruct)
         [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_STRING] = "String",
         [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_OBJECT] = "Object",
     }
+    local TypeString = {
+        [1] = "void",
+        [2] = "bool",
+        [3] = "char",
+        [4] = "sbyte",
+        [5] = "byte",
+        [6] = "short",
+        [7] = "ushort",
+        [8] = "int",
+        [9] = "uint",
+        [10] = "long",
+        [11] = "ulong",
+        [12] = "float",
+        [13] = "double",
+        [14] = "string",
+        [22] = "TypedReference",
+        [24] = "IntPtr",
+        [25] = "UIntPtr",
+        [28] = "object",
+    }
     
-    return basicTypes[typeStruct.type] or "Unknown"
+    return TypeString[typeStruct.type] or "Unknown"
 end
 
 ---Get the full name of a type
@@ -349,6 +370,10 @@ function Type.GetArrayInfo(typeStruct)
     end
     
     return nil
+end
+
+function Type.GetTypeEnum(self, Il2CppType)
+    return gg.getValues({{address = Il2CppType + (Il2Cpp.x64 and 0xA or 0x6), flags = gg.TYPE_BYTE}})[1].value
 end
 
 ---Convert Il2CppType to a descriptive string

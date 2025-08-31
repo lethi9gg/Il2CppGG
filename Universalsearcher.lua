@@ -120,74 +120,76 @@ local Searcher = {
             gg.searchNumber(tostring(gmt | 0xB400000000000000), Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
         end
         
-        if gg.getResultsCount() > 0 then
-            local t = gg.getResults(1)
-            gg.clearResults();
-            local address = t[1].address
+        
+        local t = gg.getResults(1)
+        gg.clearResults();
+        local address = t[1].address
+        
+        -- Find the start of the registration structure
+        while true do
+            local Range = gg.getValuesRange({{address = Il2Cpp.GetPtr(address), flags = MainType}})[1]
+            address = address - pointSize
+            if Range == 'Cd' then break end
+        end
+        
+        -- Extract registration pointers
+        local g_code = Il2Cpp.GetPtr(address)
+        local g_meta = Il2Cpp.GetPtr(address + pointSize)
+        local classCount = gg.getValues({{address = g_meta + pointSize * 12, flags = MainType}})[1].value
+        
+        -- Validate class count
+        if classCount == 0 or classCount < 0 then
+            error("classCount: "..classCount)
+        end
+        
+        -- Find image definitions
+        local imgAddr = t[1].address + Il2Cpp.imagePointer
+        local results = gg.getValues({
+            {address=(Il2Cpp.GetPtr(imgAddr) + 16),flags=Il2Cpp.MainType},
+            {address=Il2Cpp.GetPtr(t[1].address + Il2Cpp.classPointer),flags=Il2Cpp.MainType}});
             
-            -- Find the start of the registration structure
-            while true do
-                local Range = gg.getValuesRange({{address = Il2Cpp.GetPtr(address), flags = MainType}})[1]
-                address = address - pointSize
-                if Range == 'Cd' then break end
-            end
-            
-            -- Extract registration pointers
-            local g_code = Il2Cpp.GetPtr(address)
-            local g_meta = Il2Cpp.GetPtr(address + pointSize)
-            local classCount = gg.getValues({{address = g_meta + pointSize * 12, flags = MainType}})[1].value
-            
-            -- Validate class count
-            if classCount == 0 or classCount < 0 then
-                error("classCount: "..classCount)
-            end
-            
-            -- Find image definitions
-            local imgAddr = t[1].address + Il2Cpp.imagePointer
-            local results = gg.getValues({
-                {address=(Il2Cpp.GetPtr(imgAddr) + 16),flags=Il2Cpp.MainType},
-                {address=Il2Cpp.GetPtr(t[1].address + Il2Cpp.classPointer),flags=Il2Cpp.MainType}});
-                
-            -- Handle special case for empty pointer
-            if Il2Cpp.GetPtr(results[1].value) == 0 then
-                results[1] = gg.getValues({{address=(Il2Cpp.GetPtr(imgAddr) + 16 + 8),flags=Il2Cpp.MainType}})[1];
-            end
-            
-            -- Set image definitions
-            local addr = results[1].address
-            if isImage(Il2Cpp.GetPtr(addr)) then
-                Il2Cpp.imageDef = Il2Cpp.GetPtr(addr)
-                Il2Cpp.imageCount = Il2Cpp.GetPtr(imgAddr - Il2Cpp.pointSize)
-            else  
-                -- Alternative search for image definitions
-                local imgAddr = t[1].address + Il2Cpp.classPointer
-                for i = 1, 100 do
-                    local addr = imgAddr + (i * Il2Cpp.pointSize)
-                    if isImage(Il2Cpp.GetPtr(addr)) then
-                        Il2Cpp.imageDef = Il2Cpp.GetPtr(addr)
-                        Il2Cpp.imageCount = Il2Cpp.GetPtr(addr - Il2Cpp.pointSize)
-                        break
-                    end
-                end
-            end
-            
-            -- Calculate image size
+        -- Handle special case for empty pointer
+        if Il2Cpp.GetPtr(results[1].value) == 0 then
+            results[1] = gg.getValues({{address=(Il2Cpp.GetPtr(imgAddr) + 16 + 8),flags=Il2Cpp.MainType}})[1];
+        end
+        
+        -- Set image definitions
+        local addr = results[1].address
+        if isImage(Il2Cpp.GetPtr(addr)) then
+            Il2Cpp.imageDef = Il2Cpp.GetPtr(addr)
+            Il2Cpp.imageCount = Il2Cpp.GetPtr(imgAddr - Il2Cpp.pointSize)
+        else  
+            -- Alternative search for image definitions
+            local imgAddr = t[1].address + Il2Cpp.classPointer
             for i = 1, 100 do
-                local addr = Il2Cpp.imageDef + (i * Il2Cpp.pointSize)
-                if isImage(addr) then
-                    Il2Cpp.imageSize = addr - Il2Cpp.imageDef
+                local addr = imgAddr + (i * Il2Cpp.pointSize)
+                if isImage(Il2Cpp.GetPtr(addr)) then
+                    Il2Cpp.imageDef = Il2Cpp.GetPtr(addr)
+                    Il2Cpp.imageCount = Il2Cpp.GetPtr(addr - Il2Cpp.pointSize)
                     break
                 end
             end
-            
-            -- Set type definition pointer
-            Il2Cpp.typeDef = results[2].address
         end
+        
+        -- Calculate image size
+        for i = 1, 100 do
+            local addr = Il2Cpp.imageDef + (i * Il2Cpp.pointSize)
+            if isImage(addr) then
+                Il2Cpp.imageSize = addr - Il2Cpp.imageDef
+                break
+            end
+        end
+        
+        -- Set type definition pointer
+        Il2Cpp.typeDef = results[2].address
+        
         
         -- Set type count and registration pointers
         Il2Cpp.typeCount = classCount or 0
         Il2Cpp.metaReg = g_meta or 0
         Il2Cpp.il2cppReg = g_code or 0
+        Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
+        Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
         
         return {
             metadataRegistration = g_meta,

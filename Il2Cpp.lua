@@ -1,6 +1,7 @@
 ---@class Il2Cpp
 ---Main Il2Cpp module providing core functionality and type definitions
-local x64 = gg.getTargetInfo().x64
+local AndroidInfo = require "Androidinfo"
+local x64 = AndroidInfo.platform
 local pointer = x64 and gg.TYPE_QWORD or gg.TYPE_DWORD
 local MainType = pointer
 local pointSize = x64 and 8 or 4
@@ -13,7 +14,10 @@ Il2Cpp = {
     x64 = x64,
     pointer = pointer,
     MainType = MainType,
-    pointSize = pointSize
+    pointSize = pointSize,
+    methodSpecGenericMethodPointers = {},
+    methodDefinitionMethodSpecs = {},
+    genericMethodPointers = {}
 }
 
 ---@class TypeInfo
@@ -104,6 +108,23 @@ Il2Cpp.Utf8ToString = function(Address, length)
     end
 end
 
+function Il2Cpp.classArray(addr, count, class)
+    local results = {}
+    if Il2Cpp.type[class] then
+        class = Il2Cpp.type[class]
+    end
+    for i = 0, count - 1 do
+        table.insert(results, class.flags and {address = addr + (i * class.size), flags = class.flags} or class(addr + (i * class.size)))
+    end
+    if class.flags then
+        for i, v in ipairs(gg.getValues(results)) do
+            results[i] = v.value
+        end
+    end
+    return results
+end
+            
+
 ---Create a class structure for GameGuardian with proper field alignment
 -- @param fields table Table of field definitions
 -- @param version number Il2Cpp version
@@ -114,12 +135,24 @@ function Il2Cpp.classGG(fields, version)
     for _, field in ipairs(fields) do
         local includeField = true
         if field.version then
+            --[[
             local v = field.version
             if v.min and version < v.min then
                 includeField = false
             end
             if v.max and version > v.max then
                 includeField = false
+            end
+            ]]
+            local v = field.version
+            if (v and #v == 0) and (version < (v.min or 0) or version > (v.max or 99)) then
+                includeField = false
+            elseif v and #v > 0 then
+                for _, attr in ipairs(v) do
+                    if (version < (attr.min or 0) or version > (attr.max or 99)) then
+                        includeField = false
+                    end
+                end
             end
         end
         if includeField then
@@ -253,6 +286,105 @@ Il2Cpp.Il2CppTypeEnum = {
     IL2CPP_TYPE_IL2CPP_TYPE_INDEX = 0xff,
 }
 
+-- Il2CppConstants
+Il2Cpp.Il2CppConstants = {
+    -- Field Attributes
+    FIELD_ATTRIBUTE_FIELD_ACCESS_MASK = 0x0007,
+    FIELD_ATTRIBUTE_COMPILER_CONTROLLED = 0x0000,
+    FIELD_ATTRIBUTE_PRIVATE = 0x0001,
+    FIELD_ATTRIBUTE_FAM_AND_ASSEM = 0x0002,
+    FIELD_ATTRIBUTE_ASSEMBLY = 0x0003,
+    FIELD_ATTRIBUTE_FAMILY = 0x0004,
+    FIELD_ATTRIBUTE_FAM_OR_ASSEM = 0x0005,
+    FIELD_ATTRIBUTE_PUBLIC = 0x0006,
+    FIELD_ATTRIBUTE_STATIC = 0x0010,
+    FIELD_ATTRIBUTE_INIT_ONLY = 0x0020,
+    FIELD_ATTRIBUTE_LITERAL = 0x0040,
+
+    -- Method Attributes
+    METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK = 0x0007,
+    METHOD_ATTRIBUTE_COMPILER_CONTROLLED = 0x0000,
+    METHOD_ATTRIBUTE_PRIVATE = 0x0001,
+    METHOD_ATTRIBUTE_FAM_AND_ASSEM = 0x0002,
+    METHOD_ATTRIBUTE_ASSEM = 0x0003,
+    METHOD_ATTRIBUTE_FAMILY = 0x0004,
+    METHOD_ATTRIBUTE_FAM_OR_ASSEM = 0x0005,
+    METHOD_ATTRIBUTE_PUBLIC = 0x0006,
+    METHOD_ATTRIBUTE_STATIC = 0x0010,
+    METHOD_ATTRIBUTE_FINAL = 0x0020,
+    METHOD_ATTRIBUTE_VIRTUAL = 0x0040,
+    METHOD_ATTRIBUTE_VTABLE_LAYOUT_MASK = 0x0100,
+    METHOD_ATTRIBUTE_REUSE_SLOT = 0x0000,
+    METHOD_ATTRIBUTE_NEW_SLOT = 0x0100,
+    METHOD_ATTRIBUTE_ABSTRACT = 0x0400,
+    METHOD_ATTRIBUTE_PINVOKE_IMPL = 0x2000,
+
+    -- Type Attributes
+    TYPE_ATTRIBUTE_VISIBILITY_MASK = 0x00000007,
+    TYPE_ATTRIBUTE_NOT_PUBLIC = 0x00000000,
+    TYPE_ATTRIBUTE_PUBLIC = 0x00000001,
+    TYPE_ATTRIBUTE_NESTED_PUBLIC = 0x00000002,
+    TYPE_ATTRIBUTE_NESTED_PRIVATE = 0x00000003,
+    TYPE_ATTRIBUTE_NESTED_FAMILY = 0x00000004,
+    TYPE_ATTRIBUTE_NESTED_ASSEMBLY = 0x00000005,
+    TYPE_ATTRIBUTE_NESTED_FAM_AND_ASSEM = 0x00000006,
+    TYPE_ATTRIBUTE_NESTED_FAM_OR_ASSEM = 0x00000007,
+    TYPE_ATTRIBUTE_INTERFACE = 0x00000020,
+    TYPE_ATTRIBUTE_ABSTRACT = 0x00000080,
+    TYPE_ATTRIBUTE_SEALED = 0x00000100,
+    TYPE_ATTRIBUTE_SERIALIZABLE = 0x00002000,
+
+    -- Param Flags
+    PARAM_ATTRIBUTE_IN = 0x0001,
+    PARAM_ATTRIBUTE_OUT = 0x0002,
+    PARAM_ATTRIBUTE_OPTIONAL = 0x0010,
+}
+
+Il2Cpp.methodModifiers = {}
+function Il2Cpp:GetModifiers(methodDef)
+    if self.methodModifiers[methodDef] then
+        return self.methodModifiers[methodDef]
+    end
+    local str = ""
+    local access = bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK)
+    if access == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_PRIVATE then
+        str = str .. "private "
+    elseif access == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_PUBLIC then
+        str = str .. "public "
+    elseif access == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_FAMILY then
+        str = str .. "protected "
+    elseif access == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_ASSEM or access == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_FAM_AND_ASSEM then
+        str = str .. "internal "
+    elseif access == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_FAM_OR_ASSEM then
+        str = str .. "protected internal "
+    end
+    if bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_STATIC) ~= 0 then
+        str = str .. "static "
+    end
+    if bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_ABSTRACT) ~= 0 then
+        str = str .. "abstract "
+        if bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_VTABLE_LAYOUT_MASK) == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_REUSE_SLOT then
+            str = str .. "override "
+        end
+    elseif bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_FINAL) ~= 0 then
+        if bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_VTABLE_LAYOUT_MASK) == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_REUSE_SLOT then
+            str = str .. "sealed override "
+        end
+    elseif bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_VIRTUAL) ~= 0 then
+        if bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_VTABLE_LAYOUT_MASK) == Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_NEW_SLOT then
+            str = str .. "virtual "
+        else
+            str = str .. "override "
+        end
+    end
+    if bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_PINVOKE_IMPL) ~= 0 then
+        str = str .. "extern "
+    end
+    self.methodModifiers[methodDef] = str
+    return str
+end
+
+
 return setmetatable(Struct, {
     ---Metatable call handler for Struct
     -- Initializes Il2Cpp structures based on version
@@ -289,9 +421,11 @@ return setmetatable(Struct, {
             Class = require "Class",
             Field = require "Field",
             Method = require "Method",
+            Param = require "Param",
             Object = require "Object",
             Image = require "Image",
             Type = require "Type",
+            Dump = require "Dump",
             Universalsearcher = require "Universalsearcher"
         }
         
