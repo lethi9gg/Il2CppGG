@@ -19,9 +19,9 @@ Il2CppGG is an advanced Lua-based toolkit designed for GameGuardian, enabling de
 - **Safe Memory Operations**: Read and write memory via GameGuardian for secure interactions.
 - **Intelligent Caching**: Optimized performance through caching mechanisms.
 - **Name-Based Search**: Easily locate fields and classes by name without requiring addresses.
-- **Memory Hooking (New)**: Hook methods, parameters, fields, and calls for real-time modifications (from Hook.lua). Supports 32-bit and 64-bit architectures with jump opcodes.
-- **Class Dumping (New)**: Export classes to C# format, including field offsets, method RVAs, and attributes (from Dump.lua).
-- **Parameter Handling (New)**: Manage Il2Cpp parameters with names, tokens, and types (from Param.lua).
+- **Memory Hooking**: Hook methods, parameters, fields, and calls for real-time modifications (from Hook.lua). Supports 32-bit and 64-bit architectures with jump opcodes.
+- **Class Dumping**: Export classes to C# format, including field offsets, method RVAs, and attributes (from Dump.lua).
+- **Parameter Handling**: Manage Il2Cpp parameters with names, tokens, and types (from Param.lua).
 
 ## Requirements
 
@@ -149,7 +149,7 @@ end
 Represents an Il2Cpp method.
 
 ```lua
-local method = Il2Cpp.Method(0x12345678)
+local method = Il2Cpp.Method("methodName")
 
 print("Method name:", method:GetName())
 print("Return type:", method:GetReturnType():GetName())
@@ -203,35 +203,41 @@ local str = Il2Cpp.Meta:GetStringFromIndex(123)
 print("String:", str)
 ```
 
-### Hook Module (Hook.lua) (New)
+### Hook Module (Hook.lua)
 
 Enables memory hooking for modifications.
 
 ```lua
--- Hook field via method
+-- Get method and field via class
 local lateUpdate = playerClass:GetMethod("LateUpdate")
 local points = playerClass:GetField("points")
+local addPoints = playerClass:GetMethod("addPoints")
 
+-- Hook field via method
 local _lateUpdate = lateUpdate:field()
 _lateUpdate:setValues({{offset = points.offset, flags = "int", value = 9999}})
 gg.sleep(10000)
 _lateUpdate:off()
 
 -- Hook method parameters
-local addPoints = playerClass:GetMethod("addPoints")
 local _addPoints = addPoints:method()
 _addPoints:param({{param = 1, flags = "int", value = 999999}})
 gg.sleep(10000)
 _addPoints:off()
+
+-- Hook call addPoints via lateUpdate
+local _addPoints = lateUpdate:call()(addPoints)
+_addPoints:setValues({{param = 1, flags = "int", value = 999}})
+gg.sleep(10000)
+_addPoints:off()
 ```
 
-### Dump Module (Dump.lua) (New)
+### Dump Module (Dump.lua)
 
 Dumps classes to C# format.
 
 ```lua
-local dump = require("Dump")
-print(dump(playerClass))  -- Outputs C# class representation
+print(playerClass:Dump())  -- Outputs C# class representation
 ```
 
 ## Advanced Examples
