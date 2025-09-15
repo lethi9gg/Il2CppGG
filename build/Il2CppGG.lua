@@ -3804,8 +3804,8 @@ local Searcher = {
         Il2Cpp.imagePointer = Il2Cpp.Version < 27 and (AndroidInfo.platform and 72 or 36) or (AndroidInfo.platform and 24 or 12);
         
         -- Get global metadata range
-        local gmt = gg.getRangesList("global-metadata.dat");
-	    local gmt = ((gmt and #gmt > 0) and gmt[1].start) or Il2Cpp.Meta.metaStart
+        local gmt =Il2Cpp.Meta.metaStart--gg.getRangesList("global-metadata.dat");
+	    --local gmt = ((gmt and #gmt > 0) and gmt[1].start) or Il2Cpp.Meta.metaStart
 	    
 	    -- Search for global metadata reference in Il2Cpp memory
 	    gg.clearResults();
