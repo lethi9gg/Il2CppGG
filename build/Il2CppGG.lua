@@ -3727,6 +3727,13 @@ local Searcher = {
                 end
             end
         end
+        local value = -89056337
+        if gg.getValues({{address = globalMetadata[1].start, flags = 4}})[1].value ~= value then
+            gg.searchNumber(value, 4, false, gg.SIGN_EQUAL, globalMetadata[1].start, globalMetadata[#globalMetadata]['end'])
+            if getResultsCount() > 0 then
+                globalMetadata[1].start = gg.getResults(1)[1].address
+            end
+        end
         return type(globalMetadata) == "table" and globalMetadata[1].start, globalMetadata[#globalMetadata]['end'] or 0, 0
     end,
 
