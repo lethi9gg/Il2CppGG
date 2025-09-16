@@ -231,6 +231,29 @@ local Searcher = {
         end
         local addr = results[1].address
         Il2Cpp.typeDef = results[2].address
+
+        for i = 1, 100 do
+            if not Il2Cpp.imageCount then
+                local count = Il2Cpp.GetPtr(t[1].address + (i * Il2Cpp.pointSize))
+                if count < 1000 then
+                    Il2Cpp.imageCount = count
+                end
+            end
+            if not Il2Cpp.imageDef then
+                local addr = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.typeDef + (i * Il2Cpp.pointSize)))
+                local image = isImage(addr)
+                if image then
+                    Il2Cpp.imageDef = addr
+                end
+            end
+            if Il2Cpp.imageDef then
+                local addr = Il2Cpp.imageDef + (i * Il2Cpp.pointSize)
+                if isImage(addr) then
+                    Il2Cpp.imageSize = addr - Il2Cpp.imageDef
+                    break
+                end
+            end
+        end
         
         
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
