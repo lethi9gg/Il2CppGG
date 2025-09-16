@@ -12,6 +12,7 @@ local Version = require "Version"
 ---Main Il2Cpp table containing platform information and core functionality
 Il2Cpp = {
     x64 = x64,
+    armType = x64 and 6 or 4,
     pointer = pointer,
     MainType = MainType,
     pointSize = pointSize,
