@@ -183,8 +183,8 @@ local Searcher = {
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
         
-        if Il2Cpp.Utf8ToString(Meta.Header.stringOffset, 100):find(".dll") then
-            Il2Cpp.stringDef = Meta.Header.stringOffset
+        if Il2Cpp.Utf8ToString(Il2Cpp.Meta.Header.stringOffset, 100):find(".dll") then
+            Il2Cpp.stringDef = Il2Cpp.Meta.Header.stringOffset
             return
         end
         if (Il2Cpp.Version < 27) then
