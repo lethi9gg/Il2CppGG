@@ -166,7 +166,7 @@ end
 -- @param index number String index in metadata
 -- @return string Decoded UTF-8 string from metadata
 function Meta:GetStringFromIndex(index)
-    local stringDefinitions = Meta.Header.stringOffset
+    local stringDefinitions = Il2Cpp.stringDef --Meta.Header.stringOffset
     return Il2Cpp.Utf8ToString(stringDefinitions + index)
 end
 
