@@ -180,14 +180,20 @@ local Searcher = {
             end
         end
         
-        if Il2Cpp.Utf8ToString(Il2cpp.globalMetadataStart + self.stringOffset, 100):find(".dll") then
-            Il2Cpp.stringDef = Il2cpp.globalMetadataStart + self.stringOffset;
-        end
-        
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
         
-        
+        if Il2Cpp.Utf8ToString(Meta.Header.stringOffset, 100):find(".dll") then
+            Il2Cpp.stringDef = Meta.Header.stringOffset
+            return
+        end
+        if (Il2Cpp.Version < 27) then
+            Il2Cpp.stringDef = Il2Cpp.FixValue(Il2Cpp.GetPtr(Il2Cpp.imageDef + ((AndroidInfo.platform and 8) or 0)));
+            return
+        else
+            address = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.imageDef) + (AndroidInfo.platform and 16 or 8)) + (AndroidInfo.platform and 24 or 16);
+        end
+        Il2Cpp.stringDef = Il2Cpp.GetPtr(address);
     end
 }
 
