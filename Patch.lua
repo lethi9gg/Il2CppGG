@@ -41,11 +41,18 @@ local asmLT9 = {
             end
         end
         local Flags = {[4] = "X",[16] = "S",[64] = "D"}
+        local results
+        results = fix and {{address = address, flags = 4, value = flags == 4 and self:getInt(value) or self:getFloat(value)}, {address = address + 4, flags = 4, value = self.op_return}} or {[1] = {address = address, flags = 4, value = (x64 and "~A8 LDR	 "..(Flags[flags]).."0, [PC,#0x8]" or "~A LDR	 R0, [PC]")},[2] = {address = address + 4, flags = 4, value = (x64 and "~A8 RET" or "~A BX	 LR")},[3] = {address = address + 8, flags = (flags or 4), value = value}}
         if value == 0 and x64 then
-            gg.setValues({{address = address, flags = 4, value = "~A8 MOV W0, WZR"}, {address = address + 4, flags = 4, value = self.op_return}})
+            results = {{address = address, flags = 4, value = "~A8 MOV W0, WZR"}, {address = address + 4, flags = 4, value = self.op_return}}
         end
-        local results = fix and {{address = address, flags = 4, value = flags == 4 and self:getInt(value) or self:getFloat(value)}, {address = address + 4, flags = 4, value = self.op_return}} or {[1] = {address = address, flags = 4, value = (x64 and "~A8 LDR	 "..(Flags[flags]).."0, [PC,#0x8]" or "~A LDR	 R0, [PC]")},[2] = {address = address + 4, flags = 4, value = (x64 and "~A8 RET" or "~A BX	 LR")},[3] = {address = address + 8, flags = (flags or 4), value = value}}
+        local result = {}
+        for i = 0, #results -1 do
+            result[i+1] = {address = address + (i * 4), flags = 4}
+        end
+        result = gg.getValues(result)
         gg.setValues(results)
+        return function() gg.setValues(result) end
     end
 }
 return asmLT9
