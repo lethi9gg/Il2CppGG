@@ -180,6 +180,9 @@ local Searcher = {
             end
         end
         
+        if Il2Cpp.Utf8ToString(Il2cpp.globalMetadataStart + self.stringOffset, 100):find(".dll") then
+            Il2Cpp.stringDef = Il2cpp.globalMetadataStart + self.stringOffset;
+        end
         
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
