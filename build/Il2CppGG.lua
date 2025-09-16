@@ -3807,7 +3807,7 @@ local Searcher = {
         local gmt =Il2Cpp.Meta.metaStart--gg.getRangesList("global-metadata.dat");
 	    --local gmt = ((gmt and #gmt > 0) and gmt[1].start) or Il2Cpp.Meta.metaStart
 	    
-	    -- Search for global metadata reference in Il2Cpp memory
+	    --[[ Search for global metadata reference in Il2Cpp memory
 	    gg.clearResults();
 	    gg.setRanges(16 | 32);
 	    gg.searchNumber(gmt, Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
@@ -3879,20 +3879,77 @@ local Searcher = {
         
         -- Set type definition pointer
         Il2Cpp.typeDef = results[2].address
+        ]]
+
+        gg.clearResults();
+	    gg.setRanges(gg.REGION_C_BSS | gg.REGION_ANONYMOUS | gg.REGION_OTHER);
+	    gg.searchNumber(gmt, Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
+	    if gg.getResultsCount() == 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+            gg.searchNumber(tostring(gmt | 0xB400000000000000), Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
+        end
+        local t = gg.getResults(1)
+        gg.clearResults();
+        local Range, a = {}, t[1].address - (10 * Il2Cpp.pointSize)
+        for i = 1, 20 do
+            Range[i] = {address = a + (i * Il2Cpp.pointSize), flags = Il2Cpp.MainType}
+        end
+        local res = {}
+        for i, v in ipairs(gg.getValues(Range)) do
+            local addr = Il2Cpp.FixValue(v.value)
+            if addr ~= gmt then
+                res[#res+1] = {address = addr}
+            end
+        end
+        for i, v in ipairs(gg.getValuesRange(res)) do
+            if v == "Cd" or v == "O" then
+                Il2Cpp.il2cppReg = res[i].address
+                Il2Cpp.metaReg = res[i+1].address
+                Il2Cpp.typeCount = gg.getValues({{address = res[i+1].address + Il2Cpp.pointSize * 12, flags = Il2Cpp.MainType}})[1].value
+                break
+            end
+        end
+
+        local imgAddr = t[1].address + Il2Cpp.imagePointer
+        local results = gg.getValues({
+            {address=(Il2Cpp.GetPtr(imgAddr) + 16),flags=Il2Cpp.MainType},
+            {address=Il2Cpp.GetPtr(t[1].address + Il2Cpp.classPointer),flags=Il2Cpp.MainType}});
+        if Il2Cpp.GetPtr(results[1].value) == 0 then
+            results[1] = gg.getValues({{address=(Il2Cpp.GetPtr(imgAddr) + 16 + 8),flags=Il2Cpp.MainType}})[1];
+        end
+        if Il2Cpp.GetPtr(results[2].value) == 0 then
+            results[2].address = Il2Cpp.GetPtr(t[1].address + Il2Cpp.classPointer + (4 * Il2Cpp.pointSize))
+        end
+        local addr = results[1].address
+        Il2Cpp.typeDef = results[2].address
+
+        for i = 1, 100 do
+            if not Il2Cpp.imageCount then
+                local count = Il2Cpp.GetPtr(t[1].address + (i * Il2Cpp.pointSize))
+                if count < 1000 then
+                    Il2Cpp.imageCount = count
+                end
+            end
+            if not Il2Cpp.imageDef then
+                local addr = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.typeDef + (i * Il2Cpp.pointSize)))
+                local image = isImage(addr)
+                if image then
+                    Il2Cpp.imageDef = addr
+                end
+            end
+            if Il2Cpp.imageDef then
+                local addr = Il2Cpp.imageDef + (i * Il2Cpp.pointSize)
+                if isImage(addr) then
+                    Il2Cpp.imageSize = addr - Il2Cpp.imageDef
+                    break
+                end
+            end
+        end
         
         
-        -- Set type count and registration pointers
-        Il2Cpp.typeCount = classCount or 0
-        Il2Cpp.metaReg = g_meta or 0
-        Il2Cpp.il2cppReg = g_code or 0
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
         
-        return {
-            metadataRegistration = g_meta,
-            il2cppRegistration = g_code,
-            classCount = classCount,
-        }
+        
     end
 }
 
