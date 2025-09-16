@@ -1,7 +1,7 @@
 ---@class Method
 ---Module for handling Il2Cpp method operations and metadata
 local Method = require "Hook"
-
+local Patch = require "Patch"
 -- Version-specific constants for method parameter handling
 Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
 Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
@@ -11,6 +11,14 @@ Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
 -- @return string Method name
 function Method.GetName(method)
     return method.name
+end
+
+function Method.SetValues(method, value)
+    local func = Patch:setValues(method.methodPointer, value, Il2Cpp.type[tostring(method:GetReturnType())].flag)
+    function method.RestoreValues()
+        func()
+        method.RestoreValues = nil
+    end
 end
 
 ---Get the declaring class of a method
