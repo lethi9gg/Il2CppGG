@@ -1,0 +1,35 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'   # Chỉ chạy khi bạn push tag v1.0.0, v2.0.1, ...
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Lấy code từ repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Cài Lua 5.3
+      - name: Setup Lua 5.3
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.3"
+
+      # 3️⃣ Build project
+      - name: Build project
+        run: |
+          echo "Running buildLT9.lua..."
+          lua buildLT9.lua
+
+      # 4️⃣ Tạo GitHub Release và đính kèm file build/Il2CppGG.lua
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/Il2CppGG.lua
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
