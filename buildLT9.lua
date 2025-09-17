@@ -1,6 +1,6 @@
 local modules = {
    name = "Il2CppGG",
-   version = 1.0.2,
+   version = '1.0.2',
    author = "LeThi9GG",
    
    build = {
