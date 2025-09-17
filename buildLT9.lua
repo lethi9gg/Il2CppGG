@@ -69,7 +69,7 @@ local function build(results, args)
     results[1].name = args.name or results[1].name
     for i, v in ipairs(results) do
         --v.src = pipe(v.src)
-        table.insert(script, '__bundle_register("' .. v.name .. '", function(require, _LOADED, __bundle_register, __bundle_modules)\n' .. v.src .. '\nend)')
+        table.insert(script, '__bundle_register("' .. v.name .. '", function(require, _LOADED, __bundle_register, __bundle_modules)\n' .. v.src .. '\nend)\n')
         --print(args.build.output or args.Name, "<--", v.name)
     end
     table.insert(script, '\nreturn __bundle_require("' .. results[1].name .. '")')
