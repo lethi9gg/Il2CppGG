@@ -59,6 +59,7 @@ Il2CppGG/
 ├── Version.lua (Version detection and structure selection)
 ├── Param.lua (Parameter operations module)
 ├── Hook.lua (Memory hooking for modification and reverse engineering)
+├── Patch.lua (Memory Patch)
 ├── Dump.lua (Class dumping to C# format)
 ├── test.lua (Usage examples for hooking and dumping)
 └── build/
@@ -159,6 +160,11 @@ local params = method:GetParam()
 for i, param in ipairs(params) do
     print("Parameter " .. i .. ":", param.name, param.type:GetName())
 end
+-- Set Values (int, float, etc.)
+local offMethod = method:SetValue(999)
+--off
+offMethod()
+
 ```
 
 ### Type Module (Type.lua)
