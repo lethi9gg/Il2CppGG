@@ -161,9 +161,9 @@ for i, param in ipairs(params) do
     print("Parameter " .. i .. ":", param.name, param.type:GetName())
 end
 -- Set Values (int, float, etc.)
-local offMethod = method:SetValue(999)
+method:SetValue(999)
 --off
-offMethod()
+method:RestoreValues()
 
 ```
 
