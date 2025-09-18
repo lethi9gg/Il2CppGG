@@ -1,5 +1,11 @@
 local x64 = Il2Cpp.x64
 local asmLT9 = {
+    type = {
+        [8] = 4,
+        [9] = 4,
+        [12] = 16,
+        [13] = 64,
+    },
     op = gg.allocatePage(1|2|4),
     op_int = x64 and "~A8 MOV W0, #" or "~A MOVT R0, #",
     op_return = (x64 and "~A8 RET" or "~A BX	 LR"),
@@ -32,7 +38,7 @@ local asmLT9 = {
             return param .. gg.getValues({{address = self.op+2, flags = 2}})[1].value
         end
     end,
-    setValues = function(self, address, value, flags)
+    setValues = function(self, address, value, types)
         local fix
         for i = 0, 4 do
             if gg.disasm(Il2Cpp.armType, 0, Il2Cpp.gV(address + (i * 4), 4)):find(x64 and "RET" or "BX	 LR") then
@@ -41,13 +47,18 @@ local asmLT9 = {
             end
         end
         local Flags = {[4] = "X",[16] = "S",[64] = "D"}
+        local flags = self.type[types] or 4
         local results
-        results = fix and {{address = address, flags = 4, value = flags == 4 and self:getInt(value) or self:getFloat(value)}, {address = address + 4, flags = 4, value = self.op_return}} or {[1] = {address = address, flags = 4, value = (x64 and "~A8 LDR	 "..(Flags[flags]).."0, [PC,#0x8]" or "~A LDR	 R0, [PC]")},[2] = {address = address + 4, flags = 4, value = (x64 and "~A8 RET" or "~A BX	 LR")},[3] = {address = address + 8, flags = (flags or 4), value = value}}
-        if value == 0 and x64 then
+        if x64 and (value == 0 or not value) then
             results = {{address = address, flags = 4, value = "~A8 MOV W0, WZR"}, {address = address + 4, flags = 4, value = self.op_return}}
+        else
+            results = fix and {{address = address, flags = 4, value = flags == 4 and self:getInt(value) or self:getFloat(value)}, {address = address + 4, flags = 4, value = self.op_return}} 
+            or {{address = address, flags = 4, value = (x64 and "~A8 LDR	 "..(Flags[flags]).."0, [PC,#0x8]" or "~A LDR	 R0, [PC]")},
+                {address = address + 4, flags = 4, value = (x64 and "~A8 RET" or "~A BX	 LR")},
+                {address = address + 8, flags = flags, value = value}}
         end
         local result = {}
-        for i = 0, #results -1 do
+        for i = 0, 4 do
             result[i+1] = {address = address + (i * 4), flags = 4}
         end
         result = gg.getValues(result)
