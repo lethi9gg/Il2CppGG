@@ -13,8 +13,8 @@ function Method.GetName(method)
     return method.name
 end
 
-function Method.SetValues(method, value)
-    local func = Patch:setValues(method.methodPointer, value, Il2Cpp.type[tostring(method:GetReturnType())].flag)
+function Method.SetValue(method, value)
+    local func = Patch:setValues(method.methodPointer, value, method:GetReturnType().type)
     function method.RestoreValues()
         func()
         method.RestoreValues = nil
