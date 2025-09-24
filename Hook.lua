@@ -87,7 +87,7 @@ local opcode = {}
 --- @return string Opcode LDR
 function opcode.generateLDR(param, index, flags, x64)
     local iP = string.format("0x%X", index)
-    local opR = x64 and flags or "R" .. param
+    local opR = (x64 and flags or "R") .. param
     return x64 and "~A8 LDR " .. opR .. ", [PC,#" .. iP .. "]" or "~A LDR " .. opR .. ", [PC,#" .. (iP - 8) .. "]"
 end
 
@@ -356,7 +356,7 @@ function hook.field:init(methodInfo)
     self.on = false
     self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
     local res = {}
-    for i = 0, 18 do
+    for i = 0, 21 do
         hook.addToResults(res, self.alloc + (i * 4), 4, nullOpcode)
     end
     hook.addToResults(res, self.alloc + (22 * 4), pointerFlagsType, jumpOpcode)
