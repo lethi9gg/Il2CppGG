@@ -1,5 +1,6 @@
 -- Il2CppGG by LeThi9GG
-require("init")
+gg.alert("Script test Il2CppGG by LeThi9GG\n\nGame test: Zombie cubes 2\n\n", "", "")
+require("init") -- or build.Il2CppGG
 
 
 -- VÍ DỤ SỬ DỤNG
@@ -28,9 +29,9 @@ local points = PlayerScript:GetField("points")
 
 
 -- Ví Dụ Chỉnh sửa Field
+gg.toast("edit field in Object\npoints: 1000")
 local obj = PlayerScript:GetInstance()
 points:SetValue(obj, 1000)
-
 
 -- DUMP output C#
 --print( PlayerScript:Dump() )
@@ -39,21 +40,30 @@ points:SetValue(obj, 1000)
 -- Hooking
 
 -- hook field(points) bằng method(LateUpdate)
+gg.toast("Hook field points in method LateUpdate")
 local _LateUpdate = LateUpdate:field()
 _LateUpdate:setValues({{offset = points.offset, flags = "int", value = 9999}})
+gg.toast("Hook field points = 9999 from LateUpdate")
 gg.sleep(10000)
 _LateUpdate:off()
-
+gg.toast("Off hook field")
 
 -- hook param của method(addPoints)
+gg.toast("Hook param method addPoints")
 local _addPoints = addPoints:method()
 _addPoints:param({{param = 1, flags = "int", value = 999999}})
+gg.toast("Hook param 1 in addPoints = 999999")
 gg.sleep(10000)
 _addPoints:off()
-
+gg.toast("Off hook param")
 
 -- hook call method(addPoints) bằng method(LateUpdate)
+gg.toast("Hook call method addPoints in method LateUpdate")
 local _addPoints = LateUpdate:call()(addPoints)
 _addPoints:setValues({{param = 1, flags = "int", value = 999}})
+gg.toast("Hook call addPoints(999) from LateUpdate")
 gg.sleep(10000)
 _addPoints:off()
+gg.toast("Off hook call")
+
+gg.alert("Done test!")
