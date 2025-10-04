@@ -1977,9 +1977,9 @@ end
 
 function Method.SetValue(method, value)
     local func = Patch:setValues(method.methodPointer, value, method:GetReturnType().type)
-    function method.RestoreValues()
+    function method.RestoreValue()
         func()
-        method.RestoreValues = nil
+        method.RestoreValue = nil
     end
 end
 
