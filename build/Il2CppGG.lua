@@ -1,3 +1,5 @@
+--Module: Il2CppGGv1.0.2
+--Author: LeThi9GG
 local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (function(superRequire)
 	local loadingPlaceholder = {[{}] = true}
 
@@ -89,7 +91,8 @@ end
 
 
 return Il2Cpp
-end)__bundle_register("Il2Cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Il2Cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Il2Cpp
 ---Main Il2Cpp module providing core functionality and type definitions
 local AndroidInfo = require "Androidinfo"
@@ -527,7 +530,8 @@ return setmetatable(Struct, {
         })
     end
 })
-end)__bundle_register("Androidinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Androidinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class AndroidInfo
 ---Table containing Android target information for the current application
 local info = gg.getTargetInfo()
@@ -550,7 +554,8 @@ local AndroidInfo = {
 }
 
 return AndroidInfo
-end)__bundle_register("Struct", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Struct", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Structs
 ---Table containing all Il2Cpp structure definitions for different versions
 local Structs = {
@@ -1033,7 +1038,8 @@ Structs.Il2CppFieldDefaultValue = {
 
 
 return Structs
-end)__bundle_register("Version", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Version", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class VersionEngine
 ---Module for detecting and handling Unity engine version compatibility with Il2Cpp
 
@@ -1214,7 +1220,8 @@ return setmetatable(VersionEngine, {
         return self:ChooseVersion()
     end
 })
-end)__bundle_register("Meta", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Meta", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Meta
 ---Module for handling metadata operations in Il2Cpp
 local Meta = {}
@@ -1499,7 +1506,8 @@ end
 
 
 return Meta
-end)__bundle_register("Class", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Class", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Class
 ---Module for handling Il2Cpp class operations and metadata
 local Class = {}
@@ -1796,7 +1804,8 @@ return setmetatable(Class, {
     -- @return table Class object or array of class objects
     __call = Class.From
 })
-end)__bundle_register("Field", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Field", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Field
 ---Module for handling Il2Cpp field operations and metadata
 local Field = {}
@@ -1949,7 +1958,8 @@ return setmetatable(Field, {
     -- @return table Field object or array of field objects
     __call = Field.From
 })
-end)__bundle_register("Method", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Method", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Method
 ---Module for handling Il2Cpp method operations and metadata
 local Method = require "Hook"
@@ -1965,8 +1975,8 @@ function Method.GetName(method)
     return method.name
 end
 
-function Method.SetValues(method, value)
-    local func = Patch:setValues(method.methodPointer, value, Il2Cpp.type[tostring(method:GetReturnType())].flag)
+function Method.SetValue(method, value)
+    local func = Patch:setValues(method.methodPointer, value, method:GetReturnType().type)
     function method.RestoreValues()
         func()
         method.RestoreValues = nil
@@ -2122,7 +2132,8 @@ return setmetatable(Method, {
     -- @return table Method object
     __call = Method.From
 })
-end)__bundle_register("Hook", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Hook", function(require, _LOADED, __bundle_register, __bundle_modules)
 --- @module hook
 --- @brief Script Lua để hook memory, hỗ trợ mod game và reverse engineering với GameGuardian.
 --- @details Hỗ trợ cả kiến trúc 32-bit và 64-bit, cho phép hook method, param, field, và call.
@@ -2212,7 +2223,7 @@ local opcode = {}
 --- @return string Opcode LDR
 function opcode.generateLDR(param, index, flags, x64)
     local iP = string.format("0x%X", index)
-    local opR = x64 and flags or "R" .. param
+    local opR = (x64 and flags or "R") .. param
     return x64 and "~A8 LDR " .. opR .. ", [PC,#" .. iP .. "]" or "~A LDR " .. opR .. ", [PC,#" .. (iP - 8) .. "]"
 end
 
@@ -2481,7 +2492,7 @@ function hook.field:init(methodInfo)
     self.on = false
     self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
     local res = {}
-    for i = 0, 18 do
+    for i = 0, 21 do
         hook.addToResults(res, self.alloc + (i * 4), 4, nullOpcode)
     end
     hook.addToResults(res, self.alloc + (22 * 4), pointerFlagsType, jumpOpcode)
@@ -2521,9 +2532,16 @@ end
 
 
 return hook
-end)__bundle_register("Patch", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Patch", function(require, _LOADED, __bundle_register, __bundle_modules)
 local x64 = Il2Cpp.x64
 local asmLT9 = {
+    type = {
+        [8] = 4,
+        [9] = 4,
+        [12] = 16,
+        [13] = 64,
+    },
     op = gg.allocatePage(1|2|4),
     op_int = x64 and "~A8 MOV W0, #" or "~A MOVT R0, #",
     op_return = (x64 and "~A8 RET" or "~A BX	 LR"),
@@ -2556,7 +2574,7 @@ local asmLT9 = {
             return param .. gg.getValues({{address = self.op+2, flags = 2}})[1].value
         end
     end,
-    setValues = function(self, address, value, flags)
+    setValues = function(self, address, value, types)
         local fix
         for i = 0, 4 do
             if gg.disasm(Il2Cpp.armType, 0, Il2Cpp.gV(address + (i * 4), 4)):find(x64 and "RET" or "BX	 LR") then
@@ -2565,13 +2583,18 @@ local asmLT9 = {
             end
         end
         local Flags = {[4] = "X",[16] = "S",[64] = "D"}
+        local flags = self.type[types] or 4
         local results
-        results = fix and {{address = address, flags = 4, value = flags == 4 and self:getInt(value) or self:getFloat(value)}, {address = address + 4, flags = 4, value = self.op_return}} or {[1] = {address = address, flags = 4, value = (x64 and "~A8 LDR	 "..(Flags[flags]).."0, [PC,#0x8]" or "~A LDR	 R0, [PC]")},[2] = {address = address + 4, flags = 4, value = (x64 and "~A8 RET" or "~A BX	 LR")},[3] = {address = address + 8, flags = (flags or 4), value = value}}
-        if value == 0 and x64 then
+        if x64 and (value == 0 or not value) then
             results = {{address = address, flags = 4, value = "~A8 MOV W0, WZR"}, {address = address + 4, flags = 4, value = self.op_return}}
+        else
+            results = fix and {{address = address, flags = 4, value = flags == 4 and self:getInt(value) or self:getFloat(value)}, {address = address + 4, flags = 4, value = self.op_return}} 
+            or {{address = address, flags = 4, value = (x64 and "~A8 LDR	 "..(Flags[flags]).."0, [PC,#0x8]" or "~A LDR	 R0, [PC]")},
+                {address = address + 4, flags = 4, value = (x64 and "~A8 RET" or "~A BX	 LR")},
+                {address = address + 8, flags = flags, value = value}}
         end
         local result = {}
-        for i = 0, #results -1 do
+        for i = 0, 4 do
             result[i+1] = {address = address + (i * 4), flags = 4}
         end
         result = gg.getValues(result)
@@ -2580,7 +2603,8 @@ local asmLT9 = {
     end
 }
 return asmLT9
-end)__bundle_register("Param", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Param", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Param
 ---Module for handling Il2Cpp param operations and metadata
 local Param = {}
@@ -2629,7 +2653,8 @@ end
 return setmetatable(Param, {
     __call = Param.From
 })
-end)__bundle_register("Object", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Object", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = require("Androidinfo")
 
 ---@class ObjectApi
@@ -2751,7 +2776,8 @@ return setmetatable(ObjectApi, {
     -- @return table Table of found objects
     __call = ObjectApi.From
 })
-end)__bundle_register("Image", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Image", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Image
 ---Module for handling Il2Cpp image operations and metadata
 local Image = {}
@@ -3065,7 +3091,8 @@ return setmetatable(Image, {
     -- @return table Image object or table of image objects
     __call = Image.From
 })
-end)__bundle_register("Type", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Type", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class Type
 ---Module for handling Il2Cpp type operations and metadata
 local Type = {}
@@ -3473,7 +3500,8 @@ return setmetatable(Type, {
     -- @return table Type object
     __call = Type.From
 })
-end)__bundle_register("Dump", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Dump", function(require, _LOADED, __bundle_register, __bundle_modules)
 function Dump(typeDef, config)
     local Il2CppConstants = Il2Cpp.Il2CppConstants
     local config = config or {
@@ -3755,7 +3783,8 @@ end
 return Dump
 
 
-end)__bundle_register("Universalsearcher", function(require, _LOADED, __bundle_register, __bundle_modules)
+end)
+__bundle_register("Universalsearcher", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = require "Androidinfo"
 local MainType = AndroidInfo.platform and gg.TYPE_QWORD or gg.TYPE_DWORD
 local pointSize = AndroidInfo.platform and 8 or 4
@@ -3957,4 +3986,5 @@ local Searcher = {
 
 return Searcher
 end)
+
 return __bundle_require("Il2CppGG")
