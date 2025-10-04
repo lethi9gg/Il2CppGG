@@ -20,6 +20,7 @@ Il2CppGG is an advanced Lua-based toolkit designed for GameGuardian, enabling de
 - **Intelligent Caching**: Optimized performance through caching mechanisms.
 - **Name-Based Search**: Easily locate fields and classes by name without requiring addresses.
 - **Memory Hooking**: Hook methods, parameters, fields, and calls for real-time modifications (from Hook.lua). Supports 32-bit and 64-bit architectures with jump opcodes.
+- **Memory Patch**: Patch memory methods. Supports 32-bit and 64-bit (from Patch.lua).
 - **Class Dumping**: Export classes to C# format, including field offsets, method RVAs, and attributes (from Dump.lua).
 - **Parameter Handling**: Manage Il2Cpp parameters with names, tokens, and types (from Param.lua).
 
@@ -163,7 +164,7 @@ end
 -- Set Values (int, float, etc.)
 method:SetValue(999)
 --off
-method:RestoreValues()
+method:RestoreValue()
 
 ```
 

@@ -17,6 +17,7 @@ local PlayerScript = Assembly:Class(nil, "PlayerScript") -- (namespace, classnam
 -- Tìm Method Trong Class Bằng Tên Hoặc GetMethods() Tất Cả Method
 local LateUpdate = PlayerScript:GetMethod("LateUpdate")
 local addPoints = PlayerScript:GetMethod("addPoints")
+local removePoints = PlayerScript:GetMethod("removePoints")
 
 -- Tìm Field Trong Class Bằng Tên Hoặc GetFields() Tất Cả Field
 local points = PlayerScript:GetField("points")
@@ -34,8 +35,15 @@ local obj = PlayerScript:GetInstance()
 points:SetValue(obj, 1000)
 
 -- DUMP output C#
---print( PlayerScript:Dump() )
+--io.open("dump.cs", "w"):write(PlayerScript:Dump()):close()
 
+
+-- Patch memory
+gg.toast("Patch memory method removePoints = false")
+removePoints:SetValue(false)
+gg.sleep(10000)
+removePoints:RestoreValue()
+gg.toast("Off patch memory method removePoints")
 
 -- Hooking
 
