@@ -1,4 +1,10 @@
 ---@module Il2Cpp
+local function script_path()
+	local str = debug.getinfo(2, "S").source:sub(2)
+	return str:match("(.*[/%\\])")
+end
+package.path = script_path() .. "?.lua;" .. package.path;
+
 ---Main initialization module for Il2Cpp framework
 Il2Cpp = require "Il2Cpp"()
 
@@ -7,7 +13,11 @@ local metaStart, metaEnd = Il2Cpp.Universalsearcher:FindGlobalMetaData()
 Il2Cpp.Meta.metaStart = metaStart
 Il2Cpp.Meta.metaEnd = metaEnd
 Il2Cpp.Meta.Header = Il2Cpp.Il2CppGlobalMetadataHeader(metaStart)
-Il2Cpp.Meta.regionClass = Il2Cpp.Version >= 29.1 and gg.REGION_ANONYMOUS or gg.REGION_C_ALLOC
+Il2Cpp.Meta.regionClass = (Il2Cpp.Version >= 29.1 and Il2Cpp.Meta.Header.version >= 29) and gg.REGION_ANONYMOUS or gg.REGION_C_ALLOC
+
+if Il2Cpp.Meta.Header.version == 31 then
+    Il2Cpp.Il2CppMethodDefinition = Il2Cpp.classGG(Il2Cpp._Il2CppMethodDefinition, Il2Cpp.Meta.Header.version)
+end
 
 local il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher:FindIl2cpp()
 Il2Cpp.il2cppStart = il2cppStart

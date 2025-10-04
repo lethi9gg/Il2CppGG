@@ -102,7 +102,7 @@ local VersionEngine = {
         -- @param unityVersion table The Unity version table
         -- @return number Il2Cpp version (30)
         [2023] = function(self, unityVersion)
-            return 30
+            return 31
         end,
     },
     
@@ -118,7 +118,7 @@ local VersionEngine = {
                 if libMain:find(v) then
                     local versionName = v .. libMain:gmatch(v .. "(.-)_")()
                     local major, minor, patch = string.gmatch(versionName, "(%d+)%p(%d+)%p(%d+)")()
-                    return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch) }
+                    return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch), name = versionName}
                 end
             end
         else
@@ -174,7 +174,7 @@ return setmetatable(VersionEngine, {
     ---Metatable call handler for VersionEngine
     -- Allows VersionEngine to be called as a function
     -- @return number Selected Il2Cpp version
-    __call = function(self)
-        return self:ChooseVersion()
+    __call = function(self, ...)
+        return self:ChooseVersion(...)
     end
 })

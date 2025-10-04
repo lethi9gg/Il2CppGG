@@ -357,6 +357,15 @@ Structs.PropertyInfo = {
     { "token", "UInt32" }
 }
 
+Structs.Il2CppPropertyDefinitionDef = {
+    { "nameIndex", "UInt32"},
+    { "get", "Int32"},
+    { "set", "Int32"},
+    { "attrs", "UInt32"},
+    { "customAttributeIndex", "Int32", version = {max = 24}},
+    { "token", "UInt32", version = {min = 19}}
+}
+
 ---@class Il2CppGenericContext
 ---Generic context structure
 Structs.Il2CppGenericContext = {
