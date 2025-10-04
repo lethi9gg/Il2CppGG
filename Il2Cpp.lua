@@ -409,7 +409,8 @@ return setmetatable(Struct, {
         elseif default == 31 or default == 29.1 then
             default = 29.1
         end
-        
+        Il2Cpp._Version = default
+        Il2Cpp._Il2CppMethodDefinition = self.Il2CppMethodDefinition
         -- Pass version to structs to filter fields
         for k, v in pairs(self) do
             v.name = k

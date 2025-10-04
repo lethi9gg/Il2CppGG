@@ -182,7 +182,9 @@ local Searcher = {
         
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
+        Il2Cpp.stringDef = Il2Cpp.Meta.Header.stringOffset
         
+        --[[
         if Il2Cpp.Utf8ToString(Il2Cpp.Meta.Header.stringOffset, 100):find(".dll") then
             Il2Cpp.stringDef = Il2Cpp.Meta.Header.stringOffset
             return
@@ -194,6 +196,7 @@ local Searcher = {
             address = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.imageDef) + (AndroidInfo.platform and 16 or 8)) + (AndroidInfo.platform and 24 or 16);
         end
         Il2Cpp.stringDef = Il2Cpp.GetPtr(address);
+        ]]
     end
 }
 

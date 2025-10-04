@@ -44,6 +44,12 @@ local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (
 end)(require)
 __bundle_register("Il2CppGG", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@module Il2Cpp
+local function script_path()
+	local str = debug.getinfo(2, "S").source:sub(2)
+	return str:match("(.*[/%\\])")
+end
+package.path = script_path() .. "?.lua;" .. package.path;
+
 ---Main initialization module for Il2Cpp framework
 Il2Cpp = require "Il2Cpp"()
 
@@ -52,7 +58,11 @@ local metaStart, metaEnd = Il2Cpp.Universalsearcher:FindGlobalMetaData()
 Il2Cpp.Meta.metaStart = metaStart
 Il2Cpp.Meta.metaEnd = metaEnd
 Il2Cpp.Meta.Header = Il2Cpp.Il2CppGlobalMetadataHeader(metaStart)
-Il2Cpp.Meta.regionClass = Il2Cpp.Version >= 29.1 and gg.REGION_ANONYMOUS or gg.REGION_C_ALLOC
+Il2Cpp.Meta.regionClass = (Il2Cpp.Version >= 29.1 and Il2Cpp.Meta.Header.version >= 29) and gg.REGION_ANONYMOUS or gg.REGION_C_ALLOC
+
+if Il2Cpp.Meta.Header.version == 31 then
+    Il2Cpp.Il2CppMethodDefinition = Il2Cpp.classGG(Il2Cpp._Il2CppMethodDefinition, Il2Cpp.Meta.Header.version)
+end
 
 local il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher:FindIl2cpp()
 Il2Cpp.il2cppStart = il2cppStart
@@ -504,7 +514,8 @@ return setmetatable(Struct, {
         elseif default == 31 or default == 29.1 then
             default = 29.1
         end
-        
+        Il2Cpp._Version = default
+        Il2Cpp._Il2CppMethodDefinition = self.Il2CppMethodDefinition
         -- Pass version to structs to filter fields
         for k, v in pairs(self) do
             v.name = k
@@ -915,6 +926,15 @@ Structs.PropertyInfo = {
     { "token", "UInt32" }
 }
 
+Structs.Il2CppPropertyDefinitionDef = {
+    { "nameIndex", "UInt32"},
+    { "get", "Int32"},
+    { "set", "Int32"},
+    { "attrs", "UInt32"},
+    { "customAttributeIndex", "Int32", version = {max = 24}},
+    { "token", "UInt32", version = {min = 19}}
+}
+
 ---@class Il2CppGenericContext
 ---Generic context structure
 Structs.Il2CppGenericContext = {
@@ -1144,7 +1164,7 @@ local VersionEngine = {
         -- @param unityVersion table The Unity version table
         -- @return number Il2Cpp version (30)
         [2023] = function(self, unityVersion)
-            return 30
+            return 31
         end,
     },
     
@@ -1160,7 +1180,7 @@ local VersionEngine = {
                 if libMain:find(v) then
                     local versionName = v .. libMain:gmatch(v .. "(.-)_")()
                     local major, minor, patch = string.gmatch(versionName, "(%d+)%p(%d+)%p(%d+)")()
-                    return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch) }
+                    return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch), name = versionName}
                 end
             end
         else
@@ -1216,8 +1236,8 @@ return setmetatable(VersionEngine, {
     ---Metatable call handler for VersionEngine
     -- Allows VersionEngine to be called as a function
     -- @return number Selected Il2Cpp version
-    __call = function(self)
-        return self:ChooseVersion()
+    __call = function(self, ...)
+        return self:ChooseVersion(...)
     end
 })
 end)
@@ -1390,8 +1410,8 @@ end
 -- @param index number String index in metadata
 -- @return string Decoded UTF-8 string from metadata
 function Meta:GetStringFromIndex(index)
-    local stringDefinitions = Il2Cpp.stringDef --Meta.Header.stringOffset
-    return Il2Cpp.Utf8ToString(stringDefinitions + index)
+    local stringDef = Meta.Header.stringOffset -- Il2Cpp.stringDef
+    return Il2Cpp.Utf8ToString(stringDef + index)
 end
 
 ---Get generic container from metadata by index
@@ -3969,7 +3989,9 @@ local Searcher = {
         
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
+        Il2Cpp.stringDef = Il2Cpp.Meta.Header.stringOffset
         
+        --[[
         if Il2Cpp.Utf8ToString(Il2Cpp.Meta.Header.stringOffset, 100):find(".dll") then
             Il2Cpp.stringDef = Il2Cpp.Meta.Header.stringOffset
             return
@@ -3981,6 +4003,7 @@ local Searcher = {
             address = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.imageDef) + (AndroidInfo.platform and 16 or 8)) + (AndroidInfo.platform and 24 or 16);
         end
         Il2Cpp.stringDef = Il2Cpp.GetPtr(address);
+        ]]
     end
 }
 
