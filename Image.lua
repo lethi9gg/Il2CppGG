@@ -21,6 +21,11 @@ function Image:From(name)
                 {address = addr + (Il2Cpp.pointSize * 2), flags = Il2Cpp.MainType}
             })
             local name = Il2Cpp.Utf8ToString(Il2Cpp.FixValue(imageInfo[1].value))
+            local check = string.find(name, ".-%.dll") or string.find(name, "__Generated")
+            if not check then
+                Il2Cpp.imageCount = i 
+                break
+            end
             self.__cache[i] = setmetatable({
                 index = i,
                 typeCount = imageInfo[2].value,

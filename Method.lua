@@ -52,8 +52,32 @@ function Method.GetParam(method, dump)
     --local methodDef = method.methodMetadataHandle or method.methodDefinition
     --local paramStart = Il2Cpp.Meta.Header.parametersOffset + Il2Cpp.gV(methodDef + Method.parameterStart, 4) * Method.parameterSize
     local methodDef = Il2Cpp.Il2CppMethodDefinition(method.methodMetadataHandle or method.methodDefinition)
-    
+    --[[
+    local param = Il2Cpp.classArray(method.parameters, Method.GetParamCount(method), Il2Cpp.Version > 27 and "Pointer" or Il2Cpp.ParameterInfo)
+    for i, v in ipairs(param) do
+        local il2cppType, name, token
+        if Il2Cpp.Version > 27 then
+            il2cppType = v--Il2Cpp.Type(v)
+            local param = Il2Cpp.Meta:GetParameterDefinition(methodDef.parameterStart + (i - 0))  
+            --local addr = Il2Cpp.Meta.Header.parametersOffset + (methodDef.parameterStart + i - 1)
+            name = Il2Cpp.Meta:GetStringFromIndex(param.nameIndex)--Il2Cpp.gV(addr, 4))
+            token = param.token--Il2Cpp.gV(addr + 4, 4)
+        else 
+            il2cppType = v.parameter_type--Il2Cpp.Type(v.parameter_type)
+            name = v.name
+            token = v.token
+        end
+        method.parameters[i] = setmetatable({
+            typeIndex = il2cppType,
+            name = name,
+            token = token
+        }, {
+            __index = Il2Cpp.Param
+        })
+    end
+    ]]
     method.parameters = {}
+    -- [==[
     for index = 0, Method.GetParamCount(method) - 1 do
         --[[
         paramStart = paramStart + (index * Method.parameterSize)
@@ -66,9 +90,11 @@ function Method.GetParam(method, dump)
             token = paramInfo[3].value
         }
         ]]
+        
         local paramDef = Il2Cpp.Param(methodDef.parameterStart + index)
         method.parameters[index + 1] = dump and tostring(paramDef) or paramDef
     end
+    --]==]
     return dump and ("(" .. table.concat(method.parameters, ", ") .. ")") or method.parameters
 end
 
@@ -123,13 +149,17 @@ function Method.GetClass(method)
         method.klass = Il2Cpp.Class(method.klass)
     end
     return method.klass
-end  
+end
+
+function Method:AddList()
+    Method(self.address, true)
+end
 
 ---Create a Method object from address or name
 -- @param addrMethodInfo number Address of the method info or name
 -- @param addList any Additional parameter (unused in current implementation)
 -- @return table Method object
-function Method:From(addr_name)
+function Method:From(addr_name, addList)
     local method = {}
     if type(addr_name) == "string" then
         local res = Il2Cpp.Meta.GetPointersToString(addr_name)
@@ -140,7 +170,7 @@ function Method:From(addr_name)
             local IsType = Il2Cpp.Type(addr)
             if IsClass and IsType then
                 v.address = v.address - (Il2Cpp.Version < 29 and Il2Cpp.pointSize * 2 or Il2Cpp.pointSize * 3)
-                local kls = Il2Cpp.MethodInfo(v.address)
+                local kls = Il2Cpp.MethodInfo(v.address, addList)
                 kls.address = v.address
                 local res = setmetatable(kls, {
                     __index = Method,
@@ -150,7 +180,7 @@ function Method:From(addr_name)
             end
         end
     else
-        method = Il2Cpp.MethodInfo(addr_name)
+        method = Il2Cpp.MethodInfo(addr_name, addList)
         method.address = addr_name
         return setmetatable(method, {
             __index = Method,

@@ -121,27 +121,26 @@ local VersionEngine = {
                     return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch), name = versionName}
                 end
             end
-        else
-            gg.setRanges(gg.REGION_C_ALLOC)
-            gg.clearResults()
-            gg.searchNumber("Q 'X-Unity-Version:'", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
-            if gg.getResultsCount() == 0 then
-               gg.setRanges(gg.REGION_JAVA_HEAP)
-               gg.searchNumber("Q 'SDK_UnityVersion'", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
-               osUV = 0x20
-            end
-            local result = gg.getResultsCount() > 0 and gg.getResults(1)[1].address + osUV or 0
-            if gg.getResultsCount() == 0 then
-                gg.setRanges(gg.REGION_ANONYMOUS)
-                gg.clearResults()
-                gg.searchNumber("00h;32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh::9", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
-                result = gg.getResultsCount() > 0 and gg.getResults(3)[3].address or 0
-                gg.clearResults()
-            end
-            gg.clearResults()
-            local major, minor, patch = string.gmatch(Il2Cpp.Utf8ToString(result), "(%d+)%p(%d+)%p(%d+)")()
-            return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch) }
         end
+        gg.setRanges(gg.REGION_C_ALLOC)
+        gg.clearResults()
+        gg.searchNumber("Q 'X-Unity-Version:'", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
+        if gg.getResultsCount() == 0 then
+           gg.setRanges(gg.REGION_JAVA_HEAP)
+           gg.searchNumber("Q 'SDK_UnityVersion'", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
+           osUV = 0x20
+        end
+        local result = gg.getResultsCount() > 0 and gg.getResults(1)[1].address + osUV or 0
+        if gg.getResultsCount() == 0 then
+            gg.setRanges(gg.REGION_ANONYMOUS)
+            gg.clearResults()
+            gg.searchNumber("00h;32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh::9", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
+            result = gg.getResultsCount() > 0 and gg.getResults(3)[3].address or 0
+            gg.clearResults()
+        end
+        gg.clearResults()
+        local major, minor, patch = string.gmatch(Il2Cpp.Utf8ToString(result), "(%d+)%p(%d+)%p(%d+)")()
+        return { major = tonumber(major), minor = tonumber(minor), patch = tonumber(patch) }
     end,
     
     ---Choose appropriate Il2Cpp version based on Unity version

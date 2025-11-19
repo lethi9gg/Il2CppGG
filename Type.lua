@@ -1,21 +1,32 @@
 ---@class Type
 ---Module for handling Il2Cpp type operations and metadata
-local Type = {}
+local Type = {__cache = {}}
 
 ---Create a Type object from memory address or index
 -- @param address number Memory address or type index
 -- @return table Type object with metadata
 function Type:From(address)
+    --print(Type.typeCount, address )
+    local address = Il2Cpp.FixValue(address)
     if Type.typeCount >= address then -- if it's an index
         address = Il2Cpp.gV(Type.type + (address * Il2Cpp.pointSize), Il2Cpp.pointer)
     end
+    if self.__cache[address] then return self.__cache[address] end
     local typeStruct = Il2Cpp.Il2CppType(address)
     typeStruct:Init()
-    return setmetatable(typeStruct, {
+    typeStruct.address = address
+    
+    if Il2Cpp.Meta.Obf and not Il2Cpp.Meta.Header.genericParameters and Type.IsGenericParameter(typeStruct) then
+        Il2Cpp.Meta.Header.genericParameters = typeStruct.data
+    end
+    
+    local types = setmetatable(typeStruct, {
         __index = Type,
         __tostring = Type.ToString,
         __name = "Type"
     })
+    self.__cache[address] = types
+    return types
 end
 
 ---Check if a type is a reference type
@@ -106,6 +117,15 @@ function Type.GetClass(typeStruct, add)
     return nil
 end
 
+function Type.GetTypeDefinitionFromIl2CppType(il2CppType)
+    if Il2Cpp.Version <= 27 then
+        local index = Il2Cpp.Meta.Header.typeDefinitionsOffset + (il2CppType.data * Il2Cpp.Il2CppTypeDefinition:GetSize())
+        return Il2Cpp.Il2CppTypeDefinition(index)
+    else
+        return Il2Cpp.Il2CppTypeDefinition(il2CppType.data)
+    end
+end
+
 ---Get the simple name of a type (for basic types)
 -- @param typeStruct table Type object
 -- @return string Simple type name
@@ -151,7 +171,6 @@ function Type.GetSimpleName(typeStruct)
     
     return TypeString[typeStruct.type] or "Unknown"
 end
-
 ---Get the full name of a type
 -- @param typeStruct table Type object
 -- @param addNamespaze boolean Whether to include namespace in the name
@@ -182,19 +201,17 @@ function Type.GetName(typeStruct, addNamespaze)
     
     if t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_CLASS or 
        t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VALUETYPE then
-        local klass = Type.GetClass(typeStruct)
+        local klass = Type.GetTypeDefinitionFromIl2CppType(typeStruct)
         if klass then
-            local namespaze = addNamespaze and klass:GetNamespace()
-            local ns = namespaze and namespaze ~= '' and (namespaze .. ".") or ""
-            return ns .. klass:GetName()
+            return Type:GetTypeDefName(klass, addNamespaze, false)
         end
     end
     
     if t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VAR or 
        t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_MVAR then
-       local param = Il2Cpp.Il2CppGenericParameter(typeStruct.data)
+       local param = Il2Cpp.Meta:GetGenericParameter(typeStruct.data)
        local name = Il2Cpp.Meta:GetStringFromIndex(param.nameIndex)
-       return name
+       return name--:gsub("`.*", "")
    end
     
     if t == Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_GENERICINST then
@@ -226,6 +243,30 @@ function Type.GetName(typeStruct, addNamespaze)
     end
     error(typeStruct)
     return "Unknown"
+end
+
+function Type:GetTypeDefName(typeDef, addNamespace, genericParameter)
+    local prefix = ""
+    if typeDef.declaringTypeIndex ~= -1 then
+        prefix = self:From(typeDef.declaringTypeIndex + 1):GetName(addNamespace, true) .. "."
+    elseif addNamespace then
+        local namespace = Il2Cpp.Meta:GetStringFromIndex(typeDef.namespaceIndex)
+        if namespace ~= "" then
+            prefix = namespace .. "."
+        end
+    end
+    local typeName = Il2Cpp.Meta:GetStringFromIndex(typeDef.nameIndex)
+    if typeDef.genericContainerIndex >= 0 then
+        local index = typeName:find("`")
+        if index then
+            typeName = typeName:sub(1, index - 1)
+        end
+        if genericParameter then
+            local genericContainer = Il2Cpp.Meta:GetGenericContainer(typeDef.genericContainerIndex + 1)
+            typeName = typeName .. Il2Cpp.Meta:GetGenericContainerParams(genericContainer)
+        end
+    end
+    return prefix .. typeName
 end
 
 ---Get the token of a type (used in metadata)
@@ -372,8 +413,8 @@ function Type.GetArrayInfo(typeStruct)
     return nil
 end
 
-function Type.GetTypeEnum(self, Il2CppType)
-    return gg.getValues({{address = Il2CppType + (Il2Cpp.x64 and 0xA or 0x6), flags = gg.TYPE_BYTE}})[1].value
+function Type.GetTypeEnum(self)
+    return gg.getValues({{address = self.address + (Il2Cpp.x64 and 0xA or 0x6), flags = gg.TYPE_BYTE}})[1].value
 end
 
 ---Convert Il2CppType to a descriptive string
