@@ -1,7 +1,7 @@
 -- Il2CppGG by LeThi9GG
 gg.alert("Script test Il2CppGG by LeThi9GG\n\nGame test: Zombie cubes 2\n\n", "", "")
 require("init") -- or build.Il2CppGG
-
+Il2Cpp()
 
 -- VÍ DỤ SỬ DỤNG
 
@@ -37,7 +37,19 @@ points:SetValue(obj, 1000)
 -- DUMP output C#
 --io.open("dump.cs", "w"):write(PlayerScript:Dump()):close()
 
-
+--[[ All 
+-- Il2Cpp:Dumper({
+    DumpField = true,
+    DumpProperty = true,
+    DumpMethod = true,
+    DumpFieldOffset = true,
+    DumpMethodOffset = true,
+    DumpTypeDefIndex = false,
+}, {
+    path = nil, -- Auto
+    image = nil -- Mặt định là tất cả, ví dụ {Il2Cpp.Image("Assembly-CSharp")}
+})
+]]
 -- Patch memory
 gg.toast("Patch memory method removePoints = false")
 removePoints:SetValue(false)

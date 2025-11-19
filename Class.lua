@@ -14,7 +14,7 @@ function Class.GetName(klass)
         local genericContainer = Il2Cpp.Meta:GetGenericContainer(index)
         local genericParameterStart = genericContainer.genericParameterStart
         local type_argc = {}
-        for i = 0, genericContainer.type_argc - 1 do
+        for i = 1, genericContainer.type_argc do
             local genericParameter = Il2Cpp.Meta:GetGenericParameter(genericParameterStart + i)
             type_argc[#type_argc+1] = Il2Cpp.Meta:GetStringFromIndex(genericParameter.nameIndex)
         end
@@ -22,6 +22,7 @@ function Class.GetName(klass)
     end
     return Name
 end
+
 
 ---Get the namespace of a class
 -- @param klass table The class object
@@ -200,6 +201,7 @@ end
 -- @param index number The class index
 -- @return number|nil The class pointer if found, nil otherwise
 function Class.GetPointersToIndex(index)
+    --local typeDefOffset, typeDefSizes = Il2Cpp.typeDefOffset, Il2Cpp.typeDefSizes
     if Il2Cpp.Meta.Header.typeDefinitionsOffset <= index and (Il2Cpp.Meta.Header.typeDefinitionsOffset + Il2Cpp.Meta.Header.typeDefinitionsSize) >= index then
         index = (index - Il2Cpp.Meta.Header.typeDefinitionsOffset) / Il2Cpp.typeSize
     elseif index > Il2Cpp.typeCount then
@@ -239,6 +241,10 @@ function Class.IsClassInfo(Address)
     return Class.IsClassCache[Address]
 end
 
+function Class:GetTypeDef()
+    return self.typeDefinition or self.typeMetadataHandle
+end 
+
 ---Name offset based on platform architecture
 Class.NameOffset = (Il2Cpp.x64 and 0x10 or 0x8)
 
@@ -250,6 +256,7 @@ Class.__cache = {}
 -- @param add any Additional parameter (unused in current implementation)
 -- @return table Class object or array of class objects
 function Class:From(addr_name_index, add)
+    --Il2Cpp.log:debug("Class:", addr_name_index)
     if self.__cache[addr_name_index] then return self.__cache[addr_name_index] end
     
     local klass = {}

@@ -64,6 +64,10 @@ function Il2Cpp.gV(address, flags)
 	return (type(address) == "table" and gg.getValues(address)) or gg.getValues({{address=address,flags=flags or Il2Cpp.MainType}})[1].value;
 end
 
+function Il2Cpp.aL(address, name, flags)
+	return (type(address) == "table" and gg.addListItems(address)) or gg.addListItems({{address=address,flags=flags or Il2Cpp.MainType, name = name}})
+end
+
 ---Align offset to specified alignment
 -- @param offset number Offset to align
 -- @param align_to number Alignment value
@@ -130,7 +134,7 @@ end
 -- @param fields table Table of field definitions
 -- @param version number Il2Cpp version
 -- @return table Class structure with proper alignment
-function Il2Cpp.classGG(fields, version)
+function Il2Cpp.classGG(fields, version) 
     local offset = 0
     local klass = {}
     for _, field in ipairs(fields) do
@@ -184,6 +188,9 @@ function Il2Cpp.classGG(fields, version)
         end
     end
     klass.size = offset
+    klass.GetSize = function(self)
+        return self.size 
+    end
     return setmetatable(klass, {
         __call = function(self, addr, addList, prefix)
             local res, t, prefix = {}, {}, prefix or ''
@@ -197,11 +204,19 @@ function Il2Cpp.classGG(fields, version)
                     end
                 end
             end
-            if addList then
-                gg.addListItems(res)
+            fields.AddList = function(self, name)
+                local name, list = (name or self.name) .. ":\n", {}
+                for i, v in ipairs(res) do 
+                    list[i] = {address = v.address, flags = v.flags, name = name .. v.name}
+                end
+                Il2Cpp.aL(list)
+                return res
             end
-            for i, v in ipairs(gg.getValues(res)) do
-                t[self[i].name] = v.flags == Il2Cpp.pointer and Il2Cpp.FixValue(v.value) or v.value
+            if addList then 
+                Il2Cpp.aL(res)
+            end
+            for i, v in ipairs(gg.getValues(res)) do 
+                t[self[i].name] = v.flags == 32 and Il2Cpp.FixValue(v.value) or v.value
                 if v.flags == Il2Cpp.pointer and (self[i].name == "name" or self[i].name == "namespaze") then
                     t[self[i].name] = Il2Cpp.Utf8ToString(t[self[i].name])
                 end
@@ -385,6 +400,109 @@ function Il2Cpp:GetModifiers(methodDef)
     return str
 end
 
+function Il2Cpp.searchPtr(...)
+    local config = {...}
+    gg.clearResults();
+    gg.searchNumber(...);
+    
+    -- Handle 64-bit Android SDK 30+ special case
+    if gg.getResultsCount() == 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+        local addrs = config[1]
+        table.remove(config, 1)
+        gg.searchNumber(tostring(addrs | 0xB400000000000000), table.unpack(config));
+    end
+    
+    local t = gg.getResults(gg.getResultsCount())
+    if #t > 0 then
+        gg.clearResults();
+        return t
+    end
+    error(string.format("Không tìm thấy con trỏ tại địa chỉ: 0x%X", config[1]))
+end
+
+function Il2Cpp:Developer(config, list, result)
+    if config.addList or config.log then 
+        local nameList, list = {"End", "Start", "Def", "Reg", "Count", "Size", "Ptr", "ersion"}, list or self
+        local results = result or {}
+        for key, value in pairs(list) do 
+            if type(value) == "number" then
+                for i, v in ipairs(nameList) do
+                    if key:find(".*" .. v) then
+                        if config.log then 
+                            Il2Cpp.log:info(key, value)
+                        end
+                        local name = key .. ((v == "Count" or v == "Size" or v == "ersion") and (": " .. value) or "")
+                        local flags = (v == "End" or v == "Start") and gg.TYPE_DWORD or Il2Cpp.MainType
+                        local value = v == "End" and value - 1 or value
+                        results[#results+1] = {address = value, name = name, flags = flags}
+                    end
+                end
+            elseif key == "Meta" then
+                self:Developer(config, value, results)
+            end
+        end
+        if not result and config.addList then
+           gg.addListItems(results)
+        end
+        return results
+    elseif config.setUp then
+        for key, value in pairs(config.setUp) do
+            self[key] = value
+        end
+        return self
+    end
+end
+
+Il2Cpp.log = {
+    debug = function(self, ...)
+        if self.DEBUG then 
+            print("[DEBUG]", ...)
+        end 
+    end,
+    info = function(self, name, ...)
+        if self.INFO then 
+            print("[INFO]" .. name .. ":", ...)
+        end 
+    end
+}
+
+function Il2Cpp:Dumper(config, target)
+    local target = target or {}
+    if not target.path then 
+        local info = gg.getTargetInfo()
+        target.path = gg.EXT_STORAGE .. "/" .. info.packageName .. "-" .. info.versionCode .. "-" .. (info.x64 and "64" or "32") .. ".cs"
+    end
+    local config = config or {
+        DumpAttribute = false,
+        DumpField = true,
+        DumpProperty = true,
+        DumpMethod = true,
+        DumpFieldOffset = true,
+        DumpMethodOffset = true,
+        DumpTypeDefIndex = false,
+    }
+    local output = io.open(target.path, "w")
+    local startTime = os.time();
+    -- Dump images
+    local imageDefs = target.image or self.Image()
+    for i, imageDef in ipairs(imageDefs) do
+        output:write(string.format("// Image %d: %s - %d\n", i - 1, imageDef:GetName(), imageDef.typeStart))
+    end
+
+    -- Dump types
+    for _, imageDef in ipairs(imageDefs) do
+        local imageName = imageDef:GetName()
+        local typeEnd = imageDef.typeStart + imageDef.typeCount
+        for typeDefIndex = imageDef.typeStart, typeEnd do
+            output:write(self.Class(typeDefIndex):Dump(config) .. "\n")
+        end
+    end
+    output:close()
+    local dumpTimeDiff = os.time() - startTime;
+	print(string.format("Dumper Done in %.2f seconds", dumpTimeDiff));
+	print("Path:", target.path)
+    return path
+end
 
 return setmetatable(Struct, {
     ---Metatable call handler for Struct

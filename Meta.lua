@@ -131,34 +131,39 @@ Meta.ReadNumberConst = function(Address, ggType)
         flags = ggType
     }})[1].value
 end
-    
+
 
 ---Get pointers to a string in memory by searching for the string pattern
 -- @param name string The string name to search for
 -- @param addList any Additional list parameter (unused in current implementation)
 -- @return table Table of search results containing addresses pointing to the string
 -- @error Throws an error if the class is not found in global-metadata
-function Meta.GetPointersToString(name, addList)
+function Meta.GetPointersToString(name, ranges)
+    local ranges = ranges or Meta
     gg.clearResults()
     gg.setRanges(-1)
     gg.searchNumber(string.format("Q 00 '%s' 00", name), gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
-        Meta.metaStart, Meta.metaEnd)
+        ranges.metaStart, ranges.metaEnd)
     if gg.getResultsCount() == 0 then
         gg.searchNumber(string.format("Q 00 '%s' ", name), gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
-        Meta.metaStart, Meta.metaEnd)
+        ranges.metaStart, ranges.metaEnd)
     end
     local results = gg.getResults(1, 1)
     if #results == 0 then
         error(string.format("Không tìm thấy lớp %s trong global-metadata", name))
     end
-    gg.clearResults()
     gg.setRanges(Meta.regionClass)
+    --[[
     gg.searchNumber(results[1].address, Il2Cpp.MainType)
     if gg.getResultsCount() == 0 and x64 then
         gg.searchNumber(tostring(results[1].address | 0xB400000000000000), Il2Cpp.MainType)
     end
-    local res = gg.getResults(gg.getResultsCount())
+    ]]
+    local res = Il2Cpp.searchPtr(results[1].address, Il2Cpp.MainType)
     gg.clearResults()
+    if #res == 0 then
+        error(string.format("Không tìm thấy con trỏ cho lớp %s %d", name, results[1].address))
+    end
     return res
 end
 
@@ -175,8 +180,8 @@ end
 -- @return table Il2CppGenericContainer object
 function Meta:GetGenericContainer(index)
     local index = index
-    if Meta.Header.genericContainersSize > index then
-        index = Meta.Header.genericContainersOffset + (index * Il2Cpp.Il2CppGenericContainer.size)
+    if self.Header.genericContainersOffset > index then
+        index = self.Header.genericContainersOffset + (index * Il2Cpp.Il2CppGenericContainer.size)
     end
     return Il2Cpp.Il2CppGenericContainer(index)
 end
@@ -186,10 +191,11 @@ end
 -- @return table Il2CppGenericParameter object
 function Meta:GetGenericParameter(index)
     local index = index
-    if Meta.Header.genericParametersSize > index then
-        index = Meta.Header.genericParametersOffset + (index * Il2Cpp.Il2CppGenericParameter.size)
+    if self.Header.genericParametersOffset > index then
+        index = self.Header.genericParametersOffset + (index * Il2Cpp.Il2CppGenericParameter.size)
     end
-    return Il2Cpp.Il2CppGenericParameter(index)
+    local genericParameter = Il2Cpp.Il2CppGenericParameter(index)
+    return genericParameter
 end
 
 function Meta:GetGenericContainerParams(genericContainer)
@@ -206,6 +212,10 @@ end
 function Meta:GetGenericInsts(index)
     local index = Il2Cpp.pMetadataRegistration.genericInsts + (index * Il2Cpp.type.Pointer.size)
     return Il2Cpp.Il2CppGenericInst(index)
+end
+
+function Meta:GetTypeDefinition(typeDef)
+    return Il2Cpp.Il2CppTypeDefinition(typeDef.typeDefinition or typeDef.typeMetadataHandle)
 end
 
 ---Get method definition from metadata by index
@@ -272,9 +282,14 @@ function Meta:TryGetDefaultValue(typeIndex, dataIndex)
     
     local behavior = self.behaviorForTypes[defaultValueType.type] or "Not support type"
     if type(behavior) == "function" then
-        return true, behavior(pointer)
+        local ok, res = pcall(behavior, pointer)
+        if not ok then 
+            error({pointer = pointer, behavior = behavior, defaultValueType = defaultValueType, typeIndex = typeIndex, dataIndex = dataIndex})
+        end
+        return true, res
     end
-    return false, behavior
+    
+    return false, pointer
 end
 
 

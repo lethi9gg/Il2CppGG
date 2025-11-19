@@ -7,13 +7,13 @@ function Dump(typeDef, config)
         DumpMethod = true,
         DumpFieldOffset = true,
         DumpMethodOffset = true,
-        DumpTypeDefIndex = true,
+        DumpTypeDefIndex = false,
     }
     local output = {}
     local extends = {}
     
     local typeDefs = Il2Cpp.Il2CppTypeDefinition(typeDef.typeMetadataHandle or typeDef.typeDefinition)
-    local typeDefIndex = typeDef:GetIndex()
+    local typeDefIndex = config.DumpTypeDefIndex and typeDef:GetIndex()
     
     if typeDef.parent >= 0 then
         local parent = typeDef:GetParent()
@@ -27,10 +27,11 @@ function Dump(typeDef, config)
             table.insert(extends, interface:GetName())
         end
     end
+    
     table.insert(output, string.format("\n// Namespace: %s", typeDef:GetNamespace()))
     
     
-    local visibility = bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_VISIBILITY_MASK)
+    local visibility = bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_VISIBILITY_MASK)
     local visibilityStr = ""
     if visibility == Il2CppConstants.TYPE_ATTRIBUTE_PUBLIC or visibility == Il2CppConstants.TYPE_ATTRIBUTE_NESTED_PUBLIC then
         visibilityStr = "public "
@@ -43,15 +44,15 @@ function Dump(typeDef, config)
     elseif visibility == Il2CppConstants.TYPE_ATTRIBUTE_NESTED_FAM_OR_ASSEM then
         visibilityStr = "protected internal "
     end
-    if bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_ABSTRACT) ~= 0 and bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_SEALED) ~= 0 then
+    if bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_ABSTRACT) ~= 0 and bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_SEALED) ~= 0 then
         visibilityStr = visibilityStr .. "static "
-    elseif bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_INTERFACE) == 0 and bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_ABSTRACT) ~= 0 then
+    elseif bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_INTERFACE) == 0 and bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_ABSTRACT) ~= 0 then
         visibilityStr = visibilityStr .. "abstract "
-    elseif not typeDef:IsValueType() and not typeDef:IsEnum() and bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_SEALED) ~= 0 then
+    elseif not typeDef:IsValueType() and not typeDef:IsEnum() and bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_SEALED) ~= 0 then
         visibilityStr = visibilityStr .. "sealed "
     end
     local typeKind = ""
-    if bit32.band(typeDef.flags, Il2CppConstants.TYPE_ATTRIBUTE_INTERFACE) ~= 0 then
+    if bit32.band(typeDefs.flags, Il2CppConstants.TYPE_ATTRIBUTE_INTERFACE) ~= 0 then
         typeKind = "interface "
     elseif typeDef:IsEnum() then
         typeKind = "enum "
@@ -62,14 +63,15 @@ function Dump(typeDef, config)
     end
     local typeName = typeDef:GetName()
     local extendsStr = #extends > 0 and string.format(" : %s", table.concat(extends, ", ")) or ""
-    local typeDefIndexStr = config.DumpTypeDefIndex and string.format(" // TypeDefIndex: %d", typeDefIndex - 1) or ""
+    local typeDefIndexStr = config.DumpTypeDefIndex and string.format(" // TypeDefIndex: %d", typeDefIndex) or ""
     table.insert(output, string.format("%s%s%s%s%s\n{", visibilityStr, typeKind, typeName, extendsStr, typeDefIndexStr))
     
     
     -- Dump fields
     if config.DumpField and typeDef.field_count > 0 then
         table.insert(output, "\t// Fields")
-        for i, fieldDef in ipairs(typeDef:GetFields()) do
+        for i = 0, typeDef.field_count - 1 do
+            local fieldDef = Il2Cpp.Field(typeDef.fields + i * Il2Cpp.FieldInfo.size)
             local fieldType = fieldDef:GetType()
             local isStatic = false
             local isConst = false
@@ -114,7 +116,7 @@ function Dump(typeDef, config)
                     if type(value) == "string" then
                         defaultValueStr = defaultValueStr .. string.format("\"%s\"", value:gsub("[\"\\]", "\\%0"))
                     elseif type(value) == "number" and math.floor(value) == value then
-                        defaultValueStr = defaultValueStr .. string.format("\\x%x", value)
+                        defaultValueStr = defaultValueStr .. value--string.format("\\x%x", value)
                     elseif value ~= nil then
                         defaultValueStr = defaultValueStr .. tostring(value)
                     else
@@ -137,20 +139,21 @@ function Dump(typeDef, config)
     -- Dump properties
     if config.DumpProperty and typeDef.property_count > 0 then
         table.insert(output, "\n\t// Properties")
-        for i, propertyDef in ipairs(typeDef:GetPropertys()) do
+        for i = 0, typeDef.property_count - 1 do
+            local propertyDef = Il2Cpp.PropertyInfo(typeDef.properties + i * Il2Cpp.PropertyInfo.size)
             if config.DumpAttribute then
                 table.insert(output, self:getCustomAttribute(imageDef, propertyDef.customAttributeIndex, propertyDef.token, "\t"))
             end
             local propertyType, modifiers
-            if propertyDef.get >= 0 then
+            if propertyDef.get ~= 0 then
                 local methodDef = Il2Cpp.Method(propertyDef.get)
                 modifiers = Il2Cpp:GetModifiers(methodDef)
                 propertyType = methodDef:GetReturnType()
-            elseif propertyDef.set >= 0 then
+            elseif propertyDef.set ~= 0 then
                 local methodDef = Il2Cpp.Method(propertyDef.set)
                 modifiers = Il2Cpp:GetModifiers(methodDef)
                 local parameterDef = methodDef:GetParam()
-                propertyType = parameterDef:GetType()
+                propertyType = parameterDef[1]:GetType()
             end
             local propertyName = propertyDef.name
             local propertyTypeName = tostring(propertyType)
@@ -168,7 +171,8 @@ function Dump(typeDef, config)
     -- Dump methods
     if config.DumpMethod and typeDef.method_count > 0 then
         table.insert(output, "\n\t// Methods")
-        for i, methodDef in ipairs(typeDef:GetMethods()) do
+        for i = 0, typeDef.method_count - 1 do
+            local methodDef = Il2Cpp.Method(Il2Cpp.GetPtr(typeDef.methods + i * Il2Cpp.pointSize))
             table.insert(output, "")
             local methodDefs = Il2Cpp.Il2CppMethodDefinition(methodDef.methodMetadataHandle or methodDef.methodDefinition)
             local isAbstract = bit32.band(methodDef.flags, Il2CppConstants.METHOD_ATTRIBUTE_ABSTRACT) ~= 0
@@ -176,7 +180,7 @@ function Dump(typeDef, config)
                 table.insert(output, self:getCustomAttribute(imageDef, methodDef.customAttributeIndex, methodDef.token, "\t"))
             end
             if config.DumpMethodOffset then
-                local methodPointer = methodDef.methodPointer
+                local methodPointer = Il2Cpp.FixValue(methodDef.methodPointer)
                 if not isAbstract and methodPointer > 0 then
                     local fixedMethodPointer = methodDef.address
                     table.insert(output, string.format("\t// RVA: 0x%x Offset: 0x%x VA: 0x%x", fixedMethodPointer, methodPointer  - Il2Cpp.il2cppStart, methodPointer))
@@ -197,7 +201,8 @@ function Dump(typeDef, config)
             end
             local returnPrefix = methodReturnType.byref == 1 and "ref " or ""
             local parameterStrs = {}
-            for j, parameterDef in ipairs(methodDef:GetParam()) do
+            for j = 0, methodDef.parameters_count - 1 do
+                local parameterDef = Il2Cpp.Param(methodDefs.parameterStart + j)
                 local parameterName = parameterDef:GetName()
                 local parameterType = parameterDef:GetType()
                 local parameterTypeName = parameterType:GetName()
