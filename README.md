@@ -77,6 +77,7 @@ Handles initialization, versioning, and core utilities.
 
 ```lua
 require("Il2CppGG")
+Il2Cpp()
 
 -- Check architecture
 print("64-bit:", Il2Cpp.x64)
@@ -180,13 +181,25 @@ print("Is value type:", typeObj:IsValueType())
 print("Is generic instance:", typeObj:IsGenericInstance())
 ```
 
-### Object Module (Object.lua)
+### Dumper Module (Dump.lua)
 
-Locates and manipulates objects in memory.
+Dumps classes to C# format.
 
 ```lua
-local players = Il2Cpp.Object:FindObjects(playerClass.address)
-print("Number of players:", #players)
+print(klass:Dump())
+
+Il2Cpp:Dumper({
+    DumpField = true,
+    DumpProperty = true,
+    DumpMethod = true,
+    DumpFieldOffset = true,
+    DumpMethodOffset = true,
+    DumpTypeDefIndex = false,
+}, {
+    path = nil, -- Auto
+    image = nil -- Mặt định là tất cả, ví dụ {Il2Cpp.Image("Assembly-CSharp")}
+})
+
 ```
 
 ### Image Module (Image.lua)
@@ -239,13 +252,6 @@ gg.sleep(10000)
 _addPoints:off()
 ```
 
-### Dump Module (Dump.lua)
-
-Dumps classes to C# format.
-
-```lua
-print(playerClass:Dump())  -- Outputs C# class representation
-```
 
 ## Advanced Examples
 
@@ -280,7 +286,7 @@ print(PlayerScript:Dump())
 
 ## Author
 
-**LeThi9GG** – Specialist in Il2Cpp reverse engineering.
+**LeThi9GG**
 
 ## Contributing
 
