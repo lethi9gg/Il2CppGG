@@ -137,9 +137,9 @@ print("Offset:", health:GetOffset())
 print("Type:", health:GetType():GetName())
 
 -- Get/Set value
-local objAddress = 0x12345678
-local val = health:GetValue(objAddress)
-health:SetValue(objAddress, 100)
+local obj = health:GetParent():GetInstance()
+local val = health:GetValue(obj)
+health:SetValue(obj, 100)
 
 -- Static fields
 if health:IsNormalStatic() then
