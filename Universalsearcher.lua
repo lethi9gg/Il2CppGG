@@ -56,12 +56,13 @@ local Searcher = {
             end
         end
         local value = -89056337
-        if gg.getValues({{address = globalMetadata[1].start, flags = 4}})[1].value ~= value then
+        if #globalMetadata > 0 and gg.getValues({{address = globalMetadata[1].start, flags = 4}})[1].value ~= value then
             gg.searchNumber(value, 4, false, gg.SIGN_EQUAL, globalMetadata[1].start, globalMetadata[#globalMetadata]['end'])
             if gg.getResultsCount() > 0 then
                 globalMetadata[1].start = gg.getResults(1)[1].address
             end
         end
+		Il2Cpp.log:info("globalMetadata[start, end]", globalMetadata[1].start, globalMetadata[#globalMetadata]['end'])
         return type(globalMetadata) == "table" and globalMetadata[1].start, globalMetadata[#globalMetadata]['end'] or 0, 0
     end,
 
@@ -115,7 +116,8 @@ local Searcher = {
             end
             il2cpp[1] = _il2cpp[#_il2cpp]
             --il2cpp = _il2cpp
-        end       
+        end
+		Il2Cpp.log:info("il2cpp[start, end]", il2cpp[1].start, il2cpp[#il2cpp]['end'])
         return il2cpp[1].start, il2cpp[#il2cpp]['end']
     end,
     
@@ -186,6 +188,7 @@ local Searcher = {
 	    end
 	    
 	    Il2Cpp.metaPtr = t[1].address
+		Il2Cpp.log:info("Il2Cpp.metaPtr", Il2Cpp.metaPtr)
 	    
 	    local i = 1
 	    while true do 
@@ -199,6 +202,8 @@ local Searcher = {
             end 
             i = i + 1
         end
+		Il2Cpp.log:info("Il2Cpp.metaReg", Il2Cpp.metaReg)
+		Il2Cpp.log:info("Il2Cpp.il2cppReg", Il2Cpp.il2cppReg)
         --Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg):AddList()
         --Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg):AddList()
         --[[os.exit()
@@ -278,6 +283,8 @@ local Searcher = {
                     --Il2Cpp.typeSize = klass2:GetTypeDef() - klass1:GetTypeDef()
                     Il2Cpp.Meta.Header.typeDefinitionsOffset = klass1:GetTypeDef()
                     Il2Cpp.Meta.Header.typeDefinitionsSize = (klassEnd:GetTypeDef() + Il2Cpp.typeSize) - Il2Cpp.Meta.Header.typeDefinitionsOffset
+					Il2Cpp.log:info("Il2Cpp.Meta.Header.typeDefinitionsOffset", Il2Cpp.Meta.Header.typeDefinitionsOffset)
+					Il2Cpp.log:info("Il2Cpp.Meta.Header.typeDefinitionsSize", Il2Cpp.Meta.Header.typeDefinitionsSize)
                  end
                 if not Il2Cpp.imageDef then
                     local imageAddrs = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.typeDef))
@@ -307,7 +314,10 @@ local Searcher = {
             end
             i = i + 1
         end
-        
+        Il2Cpp.log:info("Il2Cpp.stringDef", Il2Cpp.stringDef)
+		Il2Cpp.log:info("Il2Cpp.typeDef", Il2Cpp.typeDef)
+		Il2Cpp.log:info("Il2Cpp.imageDef", Il2Cpp.imageDef)
+		
         if Il2Cpp.Meta.Obf then
             local param = Il2Cpp.Il2CppParameterDefinition(Il2Cpp.Meta.Header.parametersOffset)
             if param.token ~= self.tokenParam then
@@ -317,6 +327,7 @@ local Searcher = {
     	        local r = gg.getResults(1)
     	        gg.clearResults();
     	        Il2Cpp.Meta.Header.parametersOffset = r[1].address - 4 
+				Il2Cpp.log:info("Il2Cpp.Meta.Header.parametersOffset", Il2Cpp.Meta.Header.parametersOffset)
     	    end
 	    end
         
