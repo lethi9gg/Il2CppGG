@@ -460,7 +460,7 @@ Il2Cpp.log = {
         end 
     end,
     info = function(self, name, ...)
-        if self.INFO then 
+        if self.INFO or self.DEBUG then 
             print("[INFO]" .. name .. ":", ...)
         end 
     end
@@ -510,6 +510,7 @@ return setmetatable(Struct, {
     -- @return table Il2Cpp API with all modules loaded
     __call = function(self)
         Il2Cpp.Version = Version()
+		Il2Cpp.log:info("Il2Cpp.Version", Il2Cpp.Version)
         local default = Il2Cpp.Version
         
         if default == 22 then
