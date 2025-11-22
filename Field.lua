@@ -63,9 +63,12 @@ function Field.GetValue(field, obj)
     if not Field.IsInstance(field) then
         error("Field must be an instance field")
     end
-    local address = obj + field.offset
-    local tInfo = Il2Cpp.type[field.type.type]
-    return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
+    local tInfo = Il2Cpp.type[tostring(field:GetType())]
+    local results = {}
+    for i, v in ipairs(obj) do
+        results[#results+1] = {address = v.address + field.offset, flags = tInfo and tInfo.flags or Il2Cpp.MainType, name = field.name}
+    end
+    return gg.getValues(results), results
 end
 
 ---Set the value of an instance field
