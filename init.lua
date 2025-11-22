@@ -19,9 +19,11 @@ Il2Cpp = function(config)
     
     if (Il2Cpp.Meta.Header.version >= 31 or Il2Cpp.Meta.Header.version <= 0) or not Il2Cpp.Utf8ToString(metaStart + Il2Cpp.Meta.Header.stringOffset, 100):find(".dll") then 
         Il2Cpp.Meta.Obf = true
+        Il2Cpp.log:info("Il2Cpp.Meta.Obf", true)
     end
     
     Il2Cpp.Meta.Header.version = Il2Cpp.Meta.Obf and Il2Cpp.Version or Il2Cpp.Meta.Header.version
+    Il2Cpp.log:info("Il2Cpp.Meta.Header.version", Il2Cpp.Meta.Header.version)
     --Il2Cpp.Meta.regionClass = (Il2Cpp.Version >= 29.1 and Il2Cpp.Meta.Header.version >= 29) and gg.REGION_ANONYMOUS or gg.REGION_C_ALLOC
 
     if Il2Cpp.Meta.Header.version == 31 then
@@ -64,6 +66,8 @@ Il2Cpp = function(config)
         end
         Il2Cpp.Meta.Header.genericContainersOffset = Il2Cpp.Meta.Header.genericContainers or Il2Cpp.Meta.Header.genericContainersOffset
         Il2Cpp.Meta.Header.genericParametersOffset = Il2Cpp.Meta.Header.genericParameters or Il2Cpp.Meta.Header.genericParametersOffset
+        Il2Cpp.log:info("Il2Cpp.Meta.Header.genericContainersOffset", Il2Cpp.Meta.Header.genericContainersOffset)
+        Il2Cpp.log:info("Il2Cpp.Meta.Header.genericParametersOffset", Il2Cpp.Meta.Header.genericParametersOffset)
     end
     
     
