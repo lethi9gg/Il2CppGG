@@ -193,7 +193,7 @@ function Il2Cpp.classGG(fields, version)
     end
     return setmetatable(klass, {
         __call = function(self, addr, addList, prefix)
-            Il2Cpp.log:debug(self.name .. ":", addr)
+            Il2Cpp.log:debug(fields.name .. ":", addr)
 			local res, t, prefix = {}, {}, prefix or ''
             for i, v in pairs(self) do
                 if type(v) == "table" then
