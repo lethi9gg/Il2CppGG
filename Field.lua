@@ -107,9 +107,10 @@ function Field.StaticGetValue(field)
     if not Field.IsNormalStatic(field) then
         error("Field must be a normal static field")
     end
-    local address = Il2Cpp.gV(field.parent.static_fields) + field.offset
-    local tInfo = Il2Cpp.type[field.type.type]
-    return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
+    local address = field:GetParent().static_fields + field.offset
+    local tInfo = Il2Cpp.type[tostring(field:GetType())]
+    local result = {{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, name = field:GetName()}}
+    return Il2Cpp.gV(result), result
 end
 
 ---Set the value of a static field

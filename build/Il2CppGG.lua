@@ -1,4 +1,4 @@
---Module: Il2CppGGv1.0.2
+--Module: Il2CppGG v1.0.4
 --Author: LeThi9GG
 local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (function(superRequire)
 	local loadingPlaceholder = {[{}] = true}
@@ -380,6 +380,7 @@ function Il2Cpp.classGG(fields, version)
                 klass[#klass+1] = {
                     address = offset,
                     flags = tInfo.flags,
+                    type = field.type,
                     name = field.name
                 }
                 offset = offset + tInfo.size
@@ -416,7 +417,7 @@ function Il2Cpp.classGG(fields, version)
                 Il2Cpp.aL(res)
             end
             for i, v in ipairs(gg.getValues(res)) do 
-                t[self[i].name] = v.flags == 32 and Il2Cpp.FixValue(v.value) or v.value
+                t[self[i].name] = self[i].type == "Pointer" and Il2Cpp.FixValue(v.value) or v.value
                 if v.flags == Il2Cpp.pointer and (self[i].name == "name" or self[i].name == "namespaze") then
                     t[self[i].name] = Il2Cpp.Utf8ToString(t[self[i].name])
                 end
@@ -857,6 +858,8 @@ local AndroidInfo = {
     
     ---@field pkg string Package name of the target application
     pkg = gg.getTargetPackage(),
+    
+    name = info.name,
     
     ---@field path string Cache path for the application with format: 
     -- "/cache/packageName-versionCode-architecture(64/32)"
@@ -2539,9 +2542,10 @@ function Field.StaticGetValue(field)
     if not Field.IsNormalStatic(field) then
         error("Field must be a normal static field")
     end
-    local address = Il2Cpp.gV(field.parent.static_fields) + field.offset
-    local tInfo = Il2Cpp.type[field.type.type]
-    return Il2Cpp.gV(address, tInfo and tInfo.flags or Il2Cpp.MainType)
+    local address = field:GetParent().static_fields + field.offset
+    local tInfo = Il2Cpp.type[tostring(field:GetType())]
+    local result = {{address = address, flags = tInfo and tInfo.flags or Il2Cpp.MainType, name = field:GetName()}}
+    return Il2Cpp.gV(result), result
 end
 
 ---Set the value of a static field
@@ -3199,7 +3203,7 @@ function hook.method:param(table)
             {address = self.methodPointer + pointerSize, flags = pointerFlagsType}
         }
         self.results = gg.getValues(values)
-        self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
+        self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC, self.methodPointer)
 
         local result = {}
         hook.addToResults(result, self.alloc, pointerFlagsType, self.results[1].value)
@@ -3242,7 +3246,7 @@ function hook.param:init(methodPointerAddress, allocAddress)
     if self.methodPointer == 0 then
         error("Địa chỉ " .. string.format("%X", self.methodPointer) .. " fail")
     end
-    self.alloc = allocAddress or gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
+    self.alloc = allocAddress or gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC, self.methodPointer)
     local res = {}
     for i = 0, 9 do
         hook.addToResults(res, self.alloc + (i * 4), 4, nullOpcode)
@@ -3326,7 +3330,7 @@ function hook.field:init(methodInfo)
         error("Địa chỉ " .. string.format("%X", self.methodPointer) .. " fail")
     end
     self.on = false
-    self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
+    self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC, methodInfo.methodPointer)
     local res = {}
     for i = 0, 21 do
         hook.addToResults(res, self.alloc + (i * 4), 4, nullOpcode)
@@ -4804,12 +4808,12 @@ local Searcher = {
 	        config.startAddrs = nil
 	        t = self.Il2CppSearchPointer(config)
 	        if not t then
-	            Il2Cpp.log:error("Il2CppSearchPointer:", config)
+	            Il2Cpp.log:error("Il2CppSearchPointer:" .. config)
 	        end
 	    end
 	    
 	    Il2Cpp.metaPtr = t[1].address
-		Il2Cpp.log:info("Il2Cpp.metaPtr:", Il2Cpp.ToHex(Il2Cpp.metaPtr))
+		Il2Cpp.log:info("Il2Cpp.metaPtr: " .. Il2Cpp.ToHex(Il2Cpp.metaPtr))
 	    
 	    local i = 1
 	    while true do 
@@ -4823,8 +4827,8 @@ local Searcher = {
             end 
             i = i + 1
         end
-		Il2Cpp.log:info("Il2Cpp.metaReg:", Il2Cpp.ToHex(Il2Cpp.metaReg))
-		Il2Cpp.log:info("Il2Cpp.il2cppReg:", Il2Cpp.ToHex(Il2Cpp.il2cppReg))
+		Il2Cpp.log:info("Il2Cpp.metaReg: " .. Il2Cpp.ToHex(Il2Cpp.metaReg))
+		Il2Cpp.log:info("Il2Cpp.il2cppReg: " .. Il2Cpp.ToHex(Il2Cpp.il2cppReg))
         --Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg):AddList()
         --Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg):AddList()
         --[[os.exit()

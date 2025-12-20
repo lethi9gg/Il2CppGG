@@ -192,12 +192,12 @@ local Searcher = {
 	        config.startAddrs = nil
 	        t = self.Il2CppSearchPointer(config)
 	        if not t then
-	            Il2Cpp.log:error("Il2CppSearchPointer:", config)
+	            Il2Cpp.log:error("Il2CppSearchPointer:" .. config)
 	        end
 	    end
 	    
 	    Il2Cpp.metaPtr = t[1].address
-		Il2Cpp.log:info("Il2Cpp.metaPtr:", Il2Cpp.ToHex(Il2Cpp.metaPtr))
+		Il2Cpp.log:info("Il2Cpp.metaPtr: " .. Il2Cpp.ToHex(Il2Cpp.metaPtr))
 	    
 	    local i = 1
 	    while true do 
@@ -211,8 +211,8 @@ local Searcher = {
             end 
             i = i + 1
         end
-		Il2Cpp.log:info("Il2Cpp.metaReg:", Il2Cpp.ToHex(Il2Cpp.metaReg))
-		Il2Cpp.log:info("Il2Cpp.il2cppReg:", Il2Cpp.ToHex(Il2Cpp.il2cppReg))
+		Il2Cpp.log:info("Il2Cpp.metaReg: " .. Il2Cpp.ToHex(Il2Cpp.metaReg))
+		Il2Cpp.log:info("Il2Cpp.il2cppReg: " .. Il2Cpp.ToHex(Il2Cpp.il2cppReg))
         --Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg):AddList()
         --Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg):AddList()
         --[[os.exit()

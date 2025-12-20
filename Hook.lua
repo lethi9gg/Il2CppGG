@@ -227,7 +227,7 @@ function hook.method:param(table)
             {address = self.methodPointer + pointerSize, flags = pointerFlagsType}
         }
         self.results = gg.getValues(values)
-        self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
+        self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC, self.methodPointer)
 
         local result = {}
         hook.addToResults(result, self.alloc, pointerFlagsType, self.results[1].value)
@@ -270,7 +270,7 @@ function hook.param:init(methodPointerAddress, allocAddress)
     if self.methodPointer == 0 then
         error("Địa chỉ " .. string.format("%X", self.methodPointer) .. " fail")
     end
-    self.alloc = allocAddress or gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
+    self.alloc = allocAddress or gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC, self.methodPointer)
     local res = {}
     for i = 0, 9 do
         hook.addToResults(res, self.alloc + (i * 4), 4, nullOpcode)
@@ -354,7 +354,7 @@ function hook.field:init(methodInfo)
         error("Địa chỉ " .. string.format("%X", self.methodPointer) .. " fail")
     end
     self.on = false
-    self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC)
+    self.alloc = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE | gg.PROT_EXEC, methodInfo.methodPointer)
     local res = {}
     for i = 0, 21 do
         hook.addToResults(res, self.alloc + (i * 4), 4, nullOpcode)

@@ -242,6 +242,7 @@ function Il2Cpp.classGG(fields, version)
                 klass[#klass+1] = {
                     address = offset,
                     flags = tInfo.flags,
+                    type = field.type,
                     name = field.name
                 }
                 offset = offset + tInfo.size
@@ -278,7 +279,7 @@ function Il2Cpp.classGG(fields, version)
                 Il2Cpp.aL(res)
             end
             for i, v in ipairs(gg.getValues(res)) do 
-                t[self[i].name] = v.flags == 32 and Il2Cpp.FixValue(v.value) or v.value
+                t[self[i].name] = self[i].type == "Pointer" and Il2Cpp.FixValue(v.value) or v.value
                 if v.flags == Il2Cpp.pointer and (self[i].name == "name" or self[i].name == "namespaze") then
                     t[self[i].name] = Il2Cpp.Utf8ToString(t[self[i].name])
                 end

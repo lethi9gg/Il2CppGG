@@ -1,6 +1,6 @@
 local modules = {
    name = "Il2CppGG",
-   version = '1.0.2',
+   version = '1.0.4',
    author = "LeThi9GG",
    
    build = {
@@ -65,7 +65,7 @@ local function build(results, args)
         args.build.output = dir .. args.name .. "." .. args.version .. ".lua"
     end
     local script = {}
-    table.insert(script, "--Module: " .. args.name .. "v" .. args.version .. "\n--Author: " .. args.author .. "\n" .. modules)
+    table.insert(script, "--Module: " .. args.name .. " v" .. args.version .. "\n--Author: " .. args.author .. "\n" .. modules)
     results[1].name = args.name or results[1].name
     for i, v in ipairs(results) do
         --v.src = pipe(v.src)
