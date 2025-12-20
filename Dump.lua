@@ -71,68 +71,8 @@ function Dump(typeDef, config)
     if config.DumpField and typeDef.field_count > 0 then
         table.insert(output, "\t// Fields")
         for i = 0, typeDef.field_count - 1 do
-            local fieldDef = Il2Cpp.Field(typeDef.fields + i * Il2Cpp.FieldInfo.size)
-            local fieldType = fieldDef:GetType()
-            local isStatic = false
-            local isConst = false
-            if config.DumpAttribute then
-                table.insert(output, self:getCustomAttribute(imageDef, fieldDef.customAttributeIndex, fieldDef.token, "\t"))
-            end
-            local access = bit32.band(fieldType.attrs, Il2CppConstants.FIELD_ATTRIBUTE_FIELD_ACCESS_MASK)
-            local accessStr = ""
-            if access == Il2CppConstants.FIELD_ATTRIBUTE_PRIVATE then
-                accessStr = "private "
-            elseif access == Il2CppConstants.FIELD_ATTRIBUTE_PUBLIC then
-                accessStr = "public "
-            elseif access == Il2CppConstants.FIELD_ATTRIBUTE_FAMILY then
-                accessStr = "protected "
-            elseif access == Il2CppConstants.FIELD_ATTRIBUTE_ASSEMBLY or access == Il2CppConstants.FIELD_ATTRIBUTE_FAM_AND_ASSEM then
-                accessStr = "internal "
-            elseif access == Il2CppConstants.FIELD_ATTRIBUTE_FAM_OR_ASSEM then
-                accessStr = "protected internal "
-            end
-            if bit32.band(fieldType.attrs, Il2CppConstants.FIELD_ATTRIBUTE_LITERAL) ~= 0 then
-                isConst = true
-                accessStr = accessStr .. "const "
-            else
-                if bit32.band(fieldType.attrs, Il2CppConstants.FIELD_ATTRIBUTE_STATIC) ~= 0 then
-                    isStatic = true
-                    accessStr = accessStr .. "static "
-                end
-                if bit32.band(fieldType.attrs, Il2CppConstants.FIELD_ATTRIBUTE_INIT_ONLY) ~= 0 then
-                    accessStr = accessStr .. "readonly "
-                end
-            end
-            local fieldName = fieldDef:GetName()
-            local fieldTypeName = tostring(fieldType)
-            local defaultValueStr = ""
-            
-            
-            local fieldDefaultValue = Il2Cpp.Meta:GetFieldDefaultValueFromIndex(typeDefs.fieldStart + (i - 1))
-            if fieldDefaultValue and fieldDefaultValue.dataIndex ~= -1 then
-                local success, value = Il2Cpp.Meta:TryGetDefaultValue(fieldDefaultValue.typeIndex, fieldDefaultValue.dataIndex)
-                if success then
-                    defaultValueStr = " = "
-                    if type(value) == "string" then
-                        defaultValueStr = defaultValueStr .. string.format("\"%s\"", value:gsub("[\"\\]", "\\%0"))
-                    elseif type(value) == "number" and math.floor(value) == value then
-                        defaultValueStr = defaultValueStr .. value--string.format("\\x%x", value)
-                    elseif value ~= nil then
-                        defaultValueStr = defaultValueStr .. tostring(value)
-                    else
-                        defaultValueStr = defaultValueStr .. "null"
-                    end
-                else
-                    defaultValueStr = string.format(" /*Metadata offset 0x%x*/", value)
-                end
-            end
-            local offsetStr = ""
-            if config.DumpFieldOffset and not isConst then
-                offsetStr = string.format("; // 0x%x", fieldDef:GetOffset())
-            else
-                offsetStr = ";"
-            end
-            table.insert(output, string.format("\t%s%s %s%s%s", accessStr, fieldTypeName, fieldName, defaultValueStr, offsetStr))
+            local fieldDef = type(typeDef.fields) == "number" and Il2Cpp.Field(typeDef.fields + i * Il2Cpp.FieldInfo.size) or typeDef.fields[i+1]
+            table.insert(output, fieldDef:ToString(i))
         end
     end
 
@@ -172,80 +112,9 @@ function Dump(typeDef, config)
     if config.DumpMethod and typeDef.method_count > 0 then
         table.insert(output, "\n\t// Methods")
         for i = 0, typeDef.method_count - 1 do
-            local methodDef = Il2Cpp.Method(Il2Cpp.GetPtr(typeDef.methods + i * Il2Cpp.pointSize))
+            local methodDef = type(typeDef.methods) == "number" and Il2Cpp.Method(Il2Cpp.GetPtr(typeDef.methods + i * Il2Cpp.pointSize)) or typeDef.methods[i+1]
             table.insert(output, "")
-            local methodDefs = Il2Cpp.Il2CppMethodDefinition(methodDef.methodMetadataHandle or methodDef.methodDefinition)
-            local isAbstract = bit32.band(methodDef.flags, Il2CppConstants.METHOD_ATTRIBUTE_ABSTRACT) ~= 0
-            if config.DumpAttribute then
-                table.insert(output, self:getCustomAttribute(imageDef, methodDef.customAttributeIndex, methodDef.token, "\t"))
-            end
-            if config.DumpMethodOffset then
-                local methodPointer = Il2Cpp.FixValue(methodDef.methodPointer)
-                if not isAbstract and methodPointer > 0 then
-                    local fixedMethodPointer = methodDef.address
-                    table.insert(output, string.format("\t// RVA: 0x%x Offset: 0x%x VA: 0x%x", fixedMethodPointer, methodPointer  - Il2Cpp.il2cppStart, methodPointer))
-                else
-                    table.insert(output, "\t// RVA: -1 Offset: -1")
-                end
-                if methodDef.slot ~= -1 then
-                    table.insert(output, string.format(" Slot: %d", methodDef.slot))
-                end
-            end
-            local modifiers = Il2Cpp:GetModifiers(methodDef)
-            local methodReturnType = methodDef:GetReturnType()
-            local methodName = methodDef:GetName()
-            local genericContainers = methodDef.genericContainerHandle or methodDef.genericContainer
-            if genericContainers ~= 0 then
-                local genericContainer = Il2Cpp.Meta:GetGenericContainer(genericContainers)
-                methodName = methodName .. Il2Cpp.Meta:GetGenericContainerParams(genericContainer)
-            end
-            local returnPrefix = methodReturnType.byref == 1 and "ref " or ""
-            local parameterStrs = {}
-            for j = 0, methodDef.parameters_count - 1 do
-                local parameterDef = Il2Cpp.Param(methodDefs.parameterStart + j)
-                local parameterName = parameterDef:GetName()
-                local parameterType = parameterDef:GetType()
-                local parameterTypeName = parameterType:GetName()
-                local paramPrefix = ""
-                if parameterType.byref == 1 then
-                    if bit32.band(parameterType.attrs, Il2CppConstants.PARAM_ATTRIBUTE_OUT) ~= 0 and bit32.band(parameterType.attrs, Il2CppConstants.PARAM_ATTRIBUTE_IN) == 0 then
-                        paramPrefix = "out "
-                    elseif bit32.band(parameterType.attrs, Il2CppConstants.PARAM_ATTRIBUTE_OUT) == 0 and bit32.band(parameterType.attrs, Il2CppConstants.PARAM_ATTRIBUTE_IN) ~= 0 then
-                        paramPrefix = "in "
-                    else
-                        paramPrefix = "ref "
-                    end
-                else
-                    if bit32.band(parameterType.attrs, Il2CppConstants.PARAM_ATTRIBUTE_IN) ~= 0 then
-                        paramPrefix = paramPrefix .. "[In] "
-                    end
-                    if bit32.band(parameterType.attrs, Il2CppConstants.PARAM_ATTRIBUTE_OUT) ~= 0 then
-                        paramPrefix = paramPrefix .. "[Out] "
-                    end
-                end
-                local paramStr = paramPrefix .. parameterTypeName .. " " .. parameterName
-                local paramDefault = Il2Cpp.Meta:GetParameterDefaultValueFromIndex(methodDefs.parameterStart + j - 1)
-                if paramDefault and paramDefault.dataIndex ~= -1 then
-                    local success, value = Il2Cpp.Meta:TryGetDefaultValue(paramDefault.typeIndex, paramDefault.dataIndex)
-                    if success then
-                        paramStr = paramStr .. " = "
-                        if type(value) == "string" then
-                            paramStr = paramStr .. string.format("\"%s\"", value:gsub("[\"\\]", "\\%0"))
-                        elseif type(value) == "number" and math.floor(value) == value then
-                            paramStr = paramStr .. string.format("\\x%x", value)
-                        elseif value ~= nil then
-                            paramStr = paramStr .. tostring(value)
-                        else
-                            paramStr = paramStr .. "null"
-                        end
-                    else
-                        paramStr = paramStr .. string.format(" /*Metadata offset 0x%x*/", value)
-                    end
-                end
-                table.insert(parameterStrs, paramStr)
-            end
-            local methodBody = isAbstract and ";" or " { }"
-            table.insert(output, string.format("\t%s%s%s %s(%s)%s", modifiers, returnPrefix, tostring(methodReturnType), methodName, table.concat(parameterStrs, ", "), methodBody))
+            table.insert(output, methodDef:ToString())
             
             -- Dump generic method specs
             -- tạm thời bỏ qua vì tốn nhiều thời gian 

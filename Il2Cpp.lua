@@ -8,6 +8,27 @@ local pointSize = x64 and 8 or 4
 local Struct = require "Struct"
 local Version = require "Version"
 
+-- Utility function to simulate Linq.ToDictionary
+function table.toDictionary(array, keySelector)
+    local dict = {}
+    for _, item in ipairs(array) do
+        --local item = item()
+        dict[keySelector(item)] = item
+    end
+    return dict
+end
+
+-- Utility function to simulate Linq.Any
+function table.all(array, predicate)
+    for _, item in ipairs(array) do
+        --local item = item()
+        if not predicate(item) then
+            return false
+        end
+    end
+    return true
+end
+
 ---@class Il2CppTable
 ---Main Il2Cpp table containing platform information and core functionality
 Il2Cpp = {
@@ -18,7 +39,8 @@ Il2Cpp = {
     pointSize = pointSize,
     methodSpecGenericMethodPointers = {},
     methodDefinitionMethodSpecs = {},
-    genericMethodPointers = {}
+    genericMethodPointers = {},
+    Info = AndroidInfo
 }
 
 ---@class TypeInfo
@@ -41,6 +63,45 @@ Il2Cpp.type = {
     Size_t  = { size = pointSize, flags = pointer },
     Object = { size = (Il2Cpp.x64 and 0x10 or 0x8), flags = pointer}
 }
+
+Il2Cpp.TypeFlag = {
+    --[1] = "void",
+    [2] = 1,--"bool",
+    --[3] = "char",
+    [4] = 1,--"sbyte",
+    [5] = 1,--"byte",
+    [6] = 2,--"short",
+    [7] = 2,--"ushort",
+    [8] = 4,--"int",
+    [9] = 4,--"uint",
+    --[10] = "long",
+    --[11] = "ulong",
+    [12] = 16,--"float",
+    [13] = 64,--"double",
+    --[14] = "string",
+    --[22] = "TypedReference",
+    --[24] = "IntPtr",
+    --[25] = "UIntPtr",
+    --[28] = "object",
+}
+
+function Il2Cpp.GetTypeToFlags(types)
+    if types == 2 then 
+        menu_item = 1
+    elseif types >= 4 and 9 <= types then 
+        menu_item = 2 
+    elseif types == 12 then 
+        menu_item = 3
+    elseif types == 13 then 
+        menu_item = 4
+    else 
+        menu_item = 5 
+    end
+end
+
+function Il2Cpp.ToHex(number)
+    return string.format("%X", number)
+end
 
 ---Get pointer value from memory address
 -- @param address number Memory address to read from
@@ -84,7 +145,7 @@ local Utf8ToStringCache = {}
 -- @param length number|nil Length of string (optional, if not provided reads until null terminator)
 -- @return string Decoded string
 Il2Cpp.Utf8ToString = function(Address, length)
-    if Utf8ToStringCache[Address] then
+    if not length and Utf8ToStringCache[Address] then
         return Utf8ToStringCache[Address]
     end
     local chars, char = {}, {
@@ -108,7 +169,7 @@ Il2Cpp.Utf8ToString = function(Address, length)
             char.address = char.address + 0x1
         end
         local Text = table.concat(chars)
-        Utf8ToStringCache[Address] = Text
+        --Utf8ToStringCache[Address] = Text
         return Text
     end
 end
@@ -455,19 +516,39 @@ function Il2Cpp:Developer(config, list, result)
 end
 
 Il2Cpp.log = {
+    results = {},
+    level = {},
+    name = "Il2CppGG",
     debug = function(self, ...)
-        if self.DEBUG then 
-            print("[DEBUG]", ...)
+        if self.level.DEBUG then 
+            self:log(string.format(self.name .. ": [%s] " ..  ..., "Debug"))
         end 
     end,
-    info = function(self, name, ...)
-        if self.INFO or self.DEBUG then 
-            print("[INFO]" .. name .. ":", ...)
+    warn = function(self, ...)
+        if self.level.WARN or self.level.INFO or self.level.DEBUG then 
+            self:log(string.format(self.name .. ": [%s] " ..  ..., "Warn"))
         end 
+    end,
+    info = function(self, ...)
+        if self.level.WARN or self.level.INFO or self.level.DEBUG then 
+            self:log(string.format(self.name .. ": [%s] " ..  ..., "Info"))
+        end 
+    end,
+    error = function(self, ...)
+        local message = string.format(self.name .. ": [%s] " ..  ..., "Error")
+        self:log(message)
+        gg.alert(message)
+        error(message)
+    end,
+    log = function(self, ...)
+        print(...)
+        gg.toast(...)
+        table.insert(self.results, ...)
     end
+        
 }
 
-function Il2Cpp:Dumper(config, target)
+function Il2Cpp:Dumper(config, target, callback)
     local target = target or {}
     if not target.path then 
         local info = gg.getTargetInfo()
@@ -482,6 +563,8 @@ function Il2Cpp:Dumper(config, target)
         DumpMethodOffset = true,
         DumpTypeDefIndex = false,
     }
+    self.log:info("Path: " .. target.path)
+    
     local output = io.open(target.path, "w")
     local startTime = os.time();
     -- Dump images
@@ -495,14 +578,75 @@ function Il2Cpp:Dumper(config, target)
         local imageName = imageDef:GetName()
         local typeEnd = imageDef.typeStart + imageDef.typeCount
         for typeDefIndex = imageDef.typeStart, typeEnd do
+            if callback and gg.isClickedUiButton() then
+                local message = "[" .. imageName .. "]: " .. typeEnd - typeDefIndex .. "/" .. typeEnd-- .. " -> " .. (typeEnd / typeDefIndex) .. "%"
+                if callback(message) and gg.alert("Dumper Interrupted:\n\n- Done: " .. typeDefIndex .. "/" .. typeEnd .. " Class.\n- Continue?\n", "Ok", "", "Exit") == 3 then
+                    break
+                end
+            end
             output:write(self.Class(typeDefIndex):Dump(config) .. "\n")
         end
     end
     output:close()
     local dumpTimeDiff = os.time() - startTime;
-	print(string.format("Dumper Done in %.2f seconds", dumpTimeDiff));
-	print("Path:", target.path)
+	self.log:info(string.format("Dumper Done in %.2f seconds", dumpTimeDiff));
     return path
+end
+
+function Il2Cpp:searchName(searchParams, config)
+    local config = config or {}
+    local searchParams = type(searchParams) == "table" and searchParams or (config.Api and self.Meta:GetPointersToStringApi(searchParams) or self.Meta.GetPointersToString(searchParams))
+    local results = {}
+    if config.Class then
+        results.Class = self.Class(searchParams) or {}
+        results.Class = results.Class.address and {results.Class} or results.Class
+        function results.Class:AddList(self)
+            local result = {}
+            for i, v in ipairs(results.Class) do
+                result[i] = {address = v.address, flags = Il2Cpp.MainType, name = v:Dump()}
+            end
+            Il2Cpp.aL(result)
+            return result
+        end
+    end
+    if config.Fields then
+        results.Fields = self.Field(searchParams) or {}
+        results.Fields = results.Fields.address and {results.Fields} or results.Fields
+        function results.Fields:AddList(self)
+            local result = {}
+            for i, v in ipairs(results.Fields) do               
+                local className = "class: " .. v:GetParent():GetName()
+                table.insert(result, {address = v.address, flags = Il2Cpp.MainType, name = className .. "\n" .. v:ToString()})
+            end
+            Il2Cpp.aL(result)
+            return result
+        end
+    end
+    if config.Methods then
+        results.Methods = self.Method(searchParams) or {}
+        results.Methods = results.Methods.address and {results.Methods} or results.Methods
+        function results.Methods:AddList(self)
+            local result = {}
+            for i, v in ipairs(results.Methods) do
+                local className = "class: " .. v:GetClass():GetName()
+                result[i] = {address = v.address, flags = Il2Cpp.MainType, name = className .. "\n" .. v:ToString()}
+            end
+            Il2Cpp.aL(result)
+            return result
+        end
+    end
+    function results:AddList(self)
+        if results.Class then
+            results.Class:AddList()
+        end
+        if results.Fields then
+            results.Fields:AddList()
+        end
+        if results.Methods then
+            results.Methods:AddList()
+        end
+    end
+    return results
 end
 
 return setmetatable(Struct, {
@@ -511,7 +655,6 @@ return setmetatable(Struct, {
     -- @return table Il2Cpp API with all modules loaded
     __call = function(self)
         Il2Cpp.Version = Version()
-		Il2Cpp.log:info("Il2Cpp.Version", Il2Cpp.Version)
         local default = Il2Cpp.Version
         
         if default == 22 then
@@ -531,6 +674,7 @@ return setmetatable(Struct, {
         end
         Il2Cpp._Version = default
         Il2Cpp._Il2CppMethodDefinition = self.Il2CppMethodDefinition
+        Il2Cpp._Il2CppGlobalMetadataHeader = self.Il2CppGlobalMetadataHeader
         -- Pass version to structs to filter fields
         for k, v in pairs(self) do
             v.name = k
@@ -548,6 +692,7 @@ return setmetatable(Struct, {
             Image = require "Image",
             Type = require "Type",
             Dump = require "Dump",
+            Patch = require "Patch",
             Universalsearcher = require "Universalsearcher"
         }
         

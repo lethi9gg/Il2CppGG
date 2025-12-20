@@ -8,13 +8,41 @@ Il2Cpp = function(config)
     
     package.path = _path
     
+    Il2Cpp.log.level = config.log or Il2Cpp.log.level
+    
+    
     -- Setup global metadata and Il2Cpp registration
+    Il2Cpp.log:info("Initializing il2cpp ...")
+    local il2cppStart, il2cppEnd = config.il2cppStart, config.il2cppEnd
+    if not il2cppStart and not il2cppEnd then
+        il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher.FindIl2cpp()
+    end
+    Il2Cpp.il2cppStart = il2cppStart
+    Il2Cpp.il2cppEnd = il2cppEnd
+    
+    Il2Cpp.log:info("Il2Cpp Version: " .. Il2Cpp.Version)
+    Il2Cpp.log:info("Il2Cpp Start Address: " .. Il2Cpp.ToHex(Il2Cpp.il2cppStart))
+    
+    
+    Il2Cpp.log:info("Initializing metadata...")
     local metaStart, metaEnd = config.metaStart, config.metaEnd
     if not metaStart and not metaEnd then
         metaStart, metaEnd = Il2Cpp.Universalsearcher:FindGlobalMetaData()
     end
+    Il2Cpp.Universalsearcher:Il2CppMetadataRegistration(metaStart)
     Il2Cpp.Meta.metaStart = metaStart
     Il2Cpp.Meta.metaEnd = metaEnd
+    Il2Cpp.Meta(metaStart, Il2Cpp.Version)
+    Il2Cpp.log:info("Metadata Version: " .. Il2Cpp.Meta.Version)
+    Il2Cpp.log:info("Metadata Start Address: " .. Il2Cpp.ToHex(metaStart))
+    
+    local il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher.FindIl2cpp(Il2Cpp.metaReg)
+    Il2Cpp.il2cppStart = il2cppStart
+    Il2Cpp.il2cppEnd = il2cppEnd
+    
+    Il2Cpp.log:info("Change Il2Cpp Start Address to: " .. Il2Cpp.ToHex(Il2Cpp.il2cppStart))
+    
+    --[[
     Il2Cpp.Meta.Header = Il2Cpp.Il2CppGlobalMetadataHeader(metaStart)
     
     if (Il2Cpp.Meta.Header.version >= 31 or Il2Cpp.Meta.Header.version <= 0) or not Il2Cpp.Utf8ToString(metaStart + Il2Cpp.Meta.Header.stringOffset, 100):find(".dll") then 
@@ -29,24 +57,8 @@ Il2Cpp = function(config)
     if Il2Cpp.Meta.Header.version == 31 then
         Il2Cpp.Il2CppMethodDefinition = Il2Cpp.classGG(Il2Cpp._Il2CppMethodDefinition, Il2Cpp.Meta.Header.version)
     end
+    ]]
     
-    local il2cppStart, il2cppEnd = config.il2cppStart, config.il2cppEnd
-    if not il2cppStart and not il2cppEnd then
-        il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher:FindIl2cpp()
-    end
-    Il2Cpp.il2cppStart = il2cppStart
-    Il2Cpp.il2cppEnd = il2cppEnd
-    
-    -- Adjust metadata header offsets by adding the metaStart address
-    if not Il2Cpp.Meta.Obf then
-        for k, v in pairs(Il2Cpp.Meta.Header) do
-            local _, __ = k:find("Offset")
-            if __ == #k then
-                Il2Cpp.Meta.Header[k] = metaStart + v
-            end
-        end
-    end
-    Il2Cpp.Universalsearcher:Il2CppMetadataRegistration()
     
     -- Calculate type size and initialize Type module properties
     --Il2Cpp.typeSize = Il2Cpp.Meta.Header.typeDefinitionsSize / Il2Cpp.typeCount
@@ -54,21 +66,7 @@ Il2Cpp = function(config)
     Il2Cpp.Type.type = Il2Cpp.pMetadataRegistration.types--Il2Cpp.gV(Il2Cpp.metaReg + ( 7 * Il2Cpp.pointSize), Il2Cpp.pointer)
     --Il2Cpp.Type.typeSize = Il2Cpp.Type.type + ((Il2Cpp.Type.typeCount - 1) * Il2Cpp.pointSize)
     
-    if Il2Cpp.Meta.Obf then
-        for i = 0, Il2Cpp.pMetadataRegistration.typeDefinitionsSizesCount - 1 do 
-            local klass = Il2Cpp.Class(i)
-            klass:Dump()
-            local genericContainer = klass.genericContainerIndex or klass.genericContainerHandle
-            if genericContainer > 0 then 
-                Il2Cpp.Meta.Header.genericContainers = genericContainer
-                break
-            end
-        end
-        Il2Cpp.Meta.Header.genericContainersOffset = Il2Cpp.Meta.Header.genericContainers or Il2Cpp.Meta.Header.genericContainersOffset
-        Il2Cpp.Meta.Header.genericParametersOffset = Il2Cpp.Meta.Header.genericParameters or Il2Cpp.Meta.Header.genericParametersOffset
-        Il2Cpp.log:info("Il2Cpp.Meta.Header.genericContainersOffset", Il2Cpp.Meta.Header.genericContainersOffset)
-        Il2Cpp.log:info("Il2Cpp.Meta.Header.genericParametersOffset", Il2Cpp.Meta.Header.genericParametersOffset)
-    end
+    
     
     
     --[[

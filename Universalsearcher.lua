@@ -62,7 +62,7 @@ local Searcher = {
                 globalMetadata[1].start = gg.getResults(1)[1].address
             end
         end
-		Il2Cpp.log:info("globalMetadata[start, end]", globalMetadata[1].start, globalMetadata[#globalMetadata]['end'])
+		
         return type(globalMetadata) == "table" and globalMetadata[1].start, globalMetadata[#globalMetadata]['end'] or 0, 0
     end,
 
@@ -89,7 +89,23 @@ local Searcher = {
     ---Find Il2Cpp library in memory using various search strategies
     -- @return number Start address of Il2Cpp library
     -- @return number End address of Il2Cpp library
-    FindIl2cpp = function()
+    FindIl2cpp = function(Il2CppMetadataRegistration)
+        if Il2CppMetadataRegistration then
+            local rangesList = gg.getRangesList()
+            for k, v in ipairs(rangesList) do
+                if v.start > Il2CppMetadataRegistration and Il2CppMetadataRegistration < v['end'] then
+                    local i = k
+                    while true do 
+                        if gg.getValues({{address = rangesList[i].start, flags = 4}})[1].value == 0x464C457F then
+                            return rangesList[i].start, v['end']
+                        end 
+                        i = i - 1 
+                    end 
+                end
+            end 
+            Il2Cpp.log:error("FindIl2cpp not found Il2CppMetadataRegistration:", Il2CppMetadataRegistration)
+        end
+                    
         local il2cpp = gg.getRangesList('libil2cpp.so')
         if #il2cpp == 0 then
             il2cpp = gg.getRangesList('split_config.')
@@ -117,7 +133,7 @@ local Searcher = {
             il2cpp[1] = _il2cpp[#_il2cpp]
             --il2cpp = _il2cpp
         end
-		Il2Cpp.log:info("il2cpp[start, end]", il2cpp[1].start, il2cpp[#il2cpp]['end'])
+		
         return il2cpp[1].start, il2cpp[#il2cpp]['end']
     end,
     
@@ -143,15 +159,8 @@ local Searcher = {
 
     ---Locate and initialize Il2Cpp metadata registration structures
     -- @return table Table containing metadata registration information
-    Il2CppMetadataRegistration = function(self)
-        ---Check if an address points to a valid image name
-        -- @param addr number Memory address to check
-        -- @return string|boolean Image name if valid, false otherwise
-        local function isImage(addr)
-            local imageStr = Il2Cpp.Utf8ToString(Il2Cpp.GetPtr(addr))
-            local check = string.find(imageStr, ".-%.dll") or string.find(imageStr, "__Generated")
-            return check and imageStr
-        end
+    Il2CppMetadataRegistration = function(self, globalMetadataHeader)
+        
         
         -- Set pointer sizes based on version and platform
         Il2Cpp.classPointer = Il2Cpp.Version < 27 and (AndroidInfo.platform and 24 or 12) or (AndroidInfo.platform and 40 or 20);
@@ -159,7 +168,7 @@ local Searcher = {
         
         -- Get global metadata range
         local gmt = gg.getRangesList("global-metadata.dat");
-	    local addrs = ((gmt and #gmt > 0) and gmt[1].start) or Il2Cpp.Meta.metaStart
+	    local addrs = ((gmt and #gmt > 0) and gmt[1].start) or globalMetadataHeader
 	    
         --[[
         gg.clearResults();
@@ -183,12 +192,12 @@ local Searcher = {
 	        config.startAddrs = nil
 	        t = self.Il2CppSearchPointer(config)
 	        if not t then
-	            error("Il2CppSearchPointer :", config)
+	            Il2Cpp.log:error("Il2CppSearchPointer:", config)
 	        end
 	    end
 	    
 	    Il2Cpp.metaPtr = t[1].address
-		Il2Cpp.log:info("Il2Cpp.metaPtr", Il2Cpp.metaPtr)
+		Il2Cpp.log:info("Il2Cpp.metaPtr:", Il2Cpp.ToHex(Il2Cpp.metaPtr))
 	    
 	    local i = 1
 	    while true do 
@@ -202,8 +211,8 @@ local Searcher = {
             end 
             i = i + 1
         end
-		Il2Cpp.log:info("Il2Cpp.metaReg", Il2Cpp.metaReg)
-		Il2Cpp.log:info("Il2Cpp.il2cppReg", Il2Cpp.il2cppReg)
+		Il2Cpp.log:info("Il2Cpp.metaReg:", Il2Cpp.ToHex(Il2Cpp.metaReg))
+		Il2Cpp.log:info("Il2Cpp.il2cppReg:", Il2Cpp.ToHex(Il2Cpp.il2cppReg))
         --Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg):AddList()
         --Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg):AddList()
         --[[os.exit()
@@ -256,80 +265,12 @@ local Searcher = {
         ]]
         Il2Cpp.pMetadataRegistration = Il2Cpp.Il2CppMetadataRegistration(Il2Cpp.metaReg)
         Il2Cpp.pCodeRegistration = Il2Cpp.Il2CppCodeRegistration(Il2Cpp.il2cppReg)
-        Il2Cpp.typeCount = Il2Cpp.pMetadataRegistration.typesCount
-        Il2Cpp.typeSize = Il2Cpp.Il2CppTypeDefinition:GetSize()
-        Il2Cpp.stringDef = Il2Cpp.Meta.Header.stringOffset
         
-        local i = 1
-        while true do 
-            local addrs = Il2Cpp.GetPtr(Il2Cpp.metaPtr + (i * Il2Cpp.pointSize))
-            if not Il2Cpp.imageCount and addrs < 1000 then 
-                Il2Cpp.imageCount = addrs 
-            end
-            
-            if not Il2Cpp.typeDef then 
-                local klass = Il2Cpp.GetPtr(addrs)
-                if isImage(Il2Cpp.GetPtr(klass)) then
-                    Il2Cpp.typeDef = addrs
-                end
-            end 
-            if Il2Cpp.typeDef then
-                local klass = Il2Cpp.GetPtr(Il2Cpp.typeDef)
-                if Il2Cpp.Meta.Obf then
-                    local klass1 = Il2Cpp.Class(klass)
-                    local klass2 = Il2Cpp.Class(Il2Cpp.GetPtr(Il2Cpp.typeDef + Il2Cpp.pointSize))
-                    local klassEnd = Il2Cpp.Class(Il2Cpp.GetPtr(Il2Cpp.typeDef + ((Il2Cpp.pMetadataRegistration.fieldOffsetsCount - 1) * Il2Cpp.pointSize)))
-                    
-                    --Il2Cpp.typeSize = klass2:GetTypeDef() - klass1:GetTypeDef()
-                    Il2Cpp.Meta.Header.typeDefinitionsOffset = klass1:GetTypeDef()
-                    Il2Cpp.Meta.Header.typeDefinitionsSize = (klassEnd:GetTypeDef() + Il2Cpp.typeSize) - Il2Cpp.Meta.Header.typeDefinitionsOffset
-					Il2Cpp.log:info("Il2Cpp.Meta.Header.typeDefinitionsOffset", Il2Cpp.Meta.Header.typeDefinitionsOffset)
-					Il2Cpp.log:info("Il2Cpp.Meta.Header.typeDefinitionsSize", Il2Cpp.Meta.Header.typeDefinitionsSize)
-                 end
-                if not Il2Cpp.imageDef then
-                    local imageAddrs = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.typeDef))
-                    if isImage(imageAddrs) then
-                        Il2Cpp.imageDef = imageAddrs
-                    end
-                end
-                Il2Cpp.Meta.regionClass = self.ranges[gg.getValuesRange({{address = klass}})[1]]
-            end 
-            if Il2Cpp.imageDef and not Il2Cpp.imageSize then
-                local addr = Il2Cpp.imageDef + (i * Il2Cpp.pointSize)
-                if isImage(addr) then
-                    Il2Cpp.imageSize = addr - Il2Cpp.imageDef
-                end
-            end
-            if Il2Cpp.imageDef and Il2Cpp.imageCount and Il2Cpp.imageSize and Il2Cpp.typeDef then
-                if not Il2Cpp.Utf8ToString(Il2Cpp.stringDef, 100):find(".dll") then
-                    local stringDef = Il2Cpp.GetPtr(Il2Cpp.imageDef)
-                    if Il2Cpp.Utf8ToString(stringDef, 100):find(".dll") then
-                        local stringDef = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.imageDef + (AndroidInfo.platform and 0x10 or 0x8)) + (AndroidInfo.platform and 0x18 or 0x10))
-                        Il2Cpp.stringDef = stringDef
-                    else 
-                        error("stringDef not found: ", stringDef, Il2Cpp.Meta.Header)
-                    end
-                end
-                break
-            end
-            i = i + 1
-        end
-        Il2Cpp.log:info("Il2Cpp.stringDef", Il2Cpp.stringDef)
-		Il2Cpp.log:info("Il2Cpp.typeDef", Il2Cpp.typeDef)
-		Il2Cpp.log:info("Il2Cpp.imageDef", Il2Cpp.imageDef)
+        
+        
+        
 		
-        if Il2Cpp.Meta.Obf then
-            local param = Il2Cpp.Il2CppParameterDefinition(Il2Cpp.Meta.Header.parametersOffset)
-            if param.token ~= self.tokenParam then
-                gg.clearResults();
-    	        gg.setRanges(-1);
-    	        gg.searchNumber(self.tokenParam, 4, nil, nil, t[1].value, -1, 1);
-    	        local r = gg.getResults(1)
-    	        gg.clearResults();
-    	        Il2Cpp.Meta.Header.parametersOffset = r[1].address - 4 
-				Il2Cpp.log:info("Il2Cpp.Meta.Header.parametersOffset", Il2Cpp.Meta.Header.parametersOffset)
-    	    end
-	    end
+        
         
         --[[
         for i = 1, 100 do

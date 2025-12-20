@@ -3,8 +3,10 @@
 local Method = require "Hook"
 local Patch = require "Patch"
 -- Version-specific constants for method parameter handling
-Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
-Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
+--Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
+--Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
+
+Method.DumpParamValues = true
 
 ---Get the name of a method
 -- @param method table The method object
@@ -151,18 +153,98 @@ function Method.GetClass(method)
     return method.klass
 end
 
+function Method.ToString(method)
+    local output = {}
+    local methodDef = method
+    
+    local methodDefs = methodDef.parameters_count ~= 0 and Il2Cpp.Il2CppMethodDefinition(methodDef.methodMetadataHandle or methodDef.methodDefinition)
+    local isAbstract = bit32.band(methodDef.flags, Il2Cpp.Il2CppConstants.METHOD_ATTRIBUTE_ABSTRACT) ~= 0
+    
+    
+    local methodPointer = Il2Cpp.FixValue(methodDef.methodPointer)
+    if not isAbstract and methodPointer > 0 then
+        local fixedMethodPointer = methodDef.address
+        table.insert(output, string.format("\t// RVA: 0x%x Offset: 0x%x VA: 0x%x", fixedMethodPointer, methodPointer  - Il2Cpp.il2cppStart, methodPointer))
+    else
+        table.insert(output, "\t// RVA: -1 Offset: -1")
+    end
+    if methodDef.slot ~= -1 then
+        table.insert(output, string.format(" Slot: %d", methodDef.slot))
+    end
+    
+    local modifiers = Il2Cpp:GetModifiers(methodDef)
+    local methodReturnType = methodDef:GetReturnType()
+    local methodName = methodDef:GetName()
+    local genericContainers = methodDef.genericContainerHandle or methodDef.genericContainer
+    if genericContainers ~= 0 then
+        local genericContainer = Il2Cpp.Meta:GetGenericContainer(genericContainers)
+        methodName = methodName .. Il2Cpp.Meta:GetGenericContainerParams(genericContainer)
+    end
+    local returnPrefix = methodReturnType.byref == 1 and "ref " or ""
+    local parameterStrs = {}
+    for j = 0, methodDef.parameters_count - 1 do
+        local parameterDef = Il2Cpp.Param(methodDefs.parameterStart + j)
+        local parameterName = parameterDef:GetName()
+        local parameterType = parameterDef:GetType()
+        local parameterTypeName = parameterType:GetName()
+        local paramPrefix = ""
+        if parameterType.byref == 1 then
+            if bit32.band(parameterType.attrs, Il2Cpp.Il2CppConstants.PARAM_ATTRIBUTE_OUT) ~= 0 and bit32.band(parameterType.attrs, Il2Cpp.Il2CppConstants.PARAM_ATTRIBUTE_IN) == 0 then
+                paramPrefix = "out "
+            elseif bit32.band(parameterType.attrs, Il2Cpp.Il2CppConstants.PARAM_ATTRIBUTE_OUT) == 0 and bit32.band(parameterType.attrs, Il2Cpp.Il2CppConstants.PARAM_ATTRIBUTE_IN) ~= 0 then
+                paramPrefix = "in "
+            else
+                paramPrefix = "ref "
+            end
+        else
+            if bit32.band(parameterType.attrs, Il2Cpp.Il2CppConstants.PARAM_ATTRIBUTE_IN) ~= 0 then
+                paramPrefix = paramPrefix .. "[In] "
+            end
+            if bit32.band(parameterType.attrs, Il2Cpp.Il2CppConstants.PARAM_ATTRIBUTE_OUT) ~= 0 then
+                paramPrefix = paramPrefix .. "[Out] "
+            end
+        end
+        local paramStr = paramPrefix .. parameterTypeName .. " " .. parameterName
+        if Il2Cpp.Method.DumpParamValues then
+            local paramDefault = Il2Cpp.Meta:GetParameterDefaultValueFromIndex(methodDefs.parameterStart + j - 1)
+            if paramDefault and paramDefault.dataIndex ~= -1 then
+                local success, value = Il2Cpp.Meta:TryGetDefaultValue(paramDefault.typeIndex, paramDefault.dataIndex)
+                if success then
+                    paramStr = paramStr .. " = "
+                    if type(value) == "string" then
+                        paramStr = paramStr .. string.format("\"%s\"", value:gsub("[\"\\]", "\\%0"))
+                    elseif type(value) == "number" and math.floor(value) == value then
+                        paramStr = paramStr .. string.format("\\x%x", value)
+                    elseif value ~= nil then
+                        paramStr = paramStr .. tostring(value)
+                    else
+                        paramStr = paramStr .. "null"
+                    end
+                else
+                    paramStr = paramStr .. string.format(" /*Metadata offset 0x%x*/", value)
+                end
+            end
+        end
+        table.insert(parameterStrs, paramStr)
+    end
+    local methodBody = isAbstract and ";" or " { }"
+    table.insert(output, string.format("\t%s%s%s %s(%s)%s", modifiers, returnPrefix, tostring(methodReturnType), methodName, table.concat(parameterStrs, ", "), methodBody))
+    return table.concat(output, "\n")
+end 
+
+
 function Method:AddList()
-    Method(self.address, true)
+    Il2Cpp.aL(self.address, self:ToString())
 end
 
 ---Create a Method object from address or name
--- @param addrMethodInfo number Address of the method info or name
+-- @param searchParams number|string|table Address of the method info or name or table address name
 -- @param addList any Additional parameter (unused in current implementation)
 -- @return table Method object
-function Method:From(addr_name, addList)
+function Method:From(searchParams, addList)
     local method = {}
-    if type(addr_name) == "string" then
-        local res = Il2Cpp.Meta.GetPointersToString(addr_name)
+    if type(searchParams) == "string" or type(searchParams) == "table" then
+        local res = type(searchParams) == "table" and searchParams or Il2Cpp.Meta.GetPointersToString(searchParams)
         for i, v in ipairs(res) do
             local addr = Il2Cpp.GetPtr(v.address + (Il2Cpp.pointSize * 1))
             local IsClass = Il2Cpp.Class.IsClassInfo(addr)
@@ -180,8 +262,8 @@ function Method:From(addr_name, addList)
             end
         end
     else
-        method = Il2Cpp.MethodInfo(addr_name, addList)
-        method.address = addr_name
+        method = Il2Cpp.MethodInfo(searchParams, addList)
+        method.address = searchParams
         return setmetatable(method, {
             __index = Method,
             __name = method.name

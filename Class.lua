@@ -78,7 +78,7 @@ end
 function Class.GetField(klass, name)
     for _, field in ipairs(klass:GetFields()) do
         if field:GetName() == name then
-            return field
+            return field, _ - 1
         end
     end
     return nil
@@ -252,21 +252,21 @@ Class.NameOffset = (Il2Cpp.x64 and 0x10 or 0x8)
 Class.__cache = {}
 
 ---Create a class object from address, name, or index
--- @param addr_name_index string|number Address, name, or index of the class
--- @param add any Additional parameter (unused in current implementation)
+-- @param searchParams table|string|number Address, name, or index of the class
+-- @param addList any Additional parameter (unused in current implementation)
 -- @return table Class object or array of class objects
-function Class:From(addr_name_index, add)
-    --Il2Cpp.log:debug("Class:", addr_name_index)
-    if self.__cache[addr_name_index] then return self.__cache[addr_name_index] end
+function Class:From(searchParams, addList)
+    --Il2Cpp.log:debug("Class:", searchParams)
+    if self.__cache[searchParams] then return self.__cache[searchParams] end
     
     local klass = {}
-    if type(addr_name_index) == "string" then
-        local res = Il2Cpp.Meta.GetPointersToString(addr_name_index)
+    if type(searchParams) == "string" or type(searchParams) == "table" then
+        local res = type(searchParams) == "table" and searchParams or Il2Cpp.Meta.GetPointersToString(searchParams)
         for i, v in ipairs(res) do
             local addr = v.address - Class.NameOffset
             local imageName = Class.IsClassInfo(addr)
             if imageName then
-                local kls = Il2Cpp.Il2CppClass(addr, add)
+                local kls = Il2Cpp.Il2CppClass(addr, addList)
                 kls.address = addr
                 kls.class_index = Class.GetIndex(kls)
                 local res = setmetatable(kls, {
@@ -277,8 +277,8 @@ function Class:From(addr_name_index, add)
             end
         end
     else
-        local addr = Class.GetPointersToIndex(addr_name_index)
-        local kls = Il2Cpp.Il2CppClass(addr, add)
+        local addr = Class.GetPointersToIndex(searchParams)
+        local kls = Il2Cpp.Il2CppClass(addr, addList)
         kls.address = addr
         kls.class_index = Class.GetIndex(kls)
         klass = setmetatable(kls, {
@@ -286,8 +286,8 @@ function Class:From(addr_name_index, add)
             __name = (kls.namespaze ~= "" and kls.namespaze .. "." or "") .. kls.name
         })
     end
-    self.__cache[addr_name_index] = #klass == 1 and klass[1] or klass
-    return self.__cache[addr_name_index]
+    self.__cache[searchParams] = #klass == 1 and klass[1] or klass
+    return self.__cache[searchParams]
 end
 
 function Class.Dump(klass, config)

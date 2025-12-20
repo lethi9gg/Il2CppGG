@@ -7,9 +7,6 @@ local Image = {}
 -- @return table Image object or table of all images
 function Image:From(name)
     if not self.__cache then
-        if not Il2Cpp.imageSize then
-            Il2Cpp.Universalsearcher.Il2CppMetadataRegistration()
-        end
         local typeStart = 0
         local addr = Il2Cpp.imageDef
         local typeCountOffset = gg.getValues({{address = addr + (Il2Cpp.pointSize * 3), flags = 4}})[1].value == 0 and (Il2Cpp.pointSize * 3) + 4 or Il2Cpp.pointSize * 3

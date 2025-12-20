@@ -104,7 +104,7 @@ local ObjectApi = {
         mayBeHead = gg.getValues(mayBeHead)
         for i = 1, #mayBeHead do
             local mayBeClass = Il2Cpp.FixValue(mayBeHead[i].value)
-            if Class.IsClassInfo(mayBeClass) then
+            if Il2Cpp.Class.IsClassInfo(mayBeClass) then
                 return mayBeHead[i]
             end
         end
