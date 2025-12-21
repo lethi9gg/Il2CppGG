@@ -4,6 +4,7 @@ Toolbox.lua
 # thư mục
 toolbox/
 wiki/
+build/
 
 # all file kiểu
 *.bak
