@@ -45,7 +45,7 @@ A global instance `gg` is automatically available in scripts. You can print all 
 ## Public Member Functions
 
 ### allocatePage
-```lua
+```java
 mixed allocatePage(int mode = gg.PROT_READ | gg.PROT_EXEC, long address = 0)
 ```
 Allocates a memory page (4 KB) in the target process.
