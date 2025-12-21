@@ -1,8 +1,11 @@
 -- Il2CppGG by LeThi9GG
 gg.alert("Script test Il2CppGG by LeThi9GG\n\nGame test: Zombie cubes 2\n\n", "", "")
 require("init") -- or build.Il2CppGG
-Il2Cpp()
-
+Il2Cpp({
+    log = {
+        INFO = true 
+    }
+})
 -- VÍ DỤ SỬ DỤNG
 
 -- Get Image By Name

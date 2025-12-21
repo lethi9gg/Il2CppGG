@@ -1,6 +1,13 @@
 ---@class Class
+local Dump = require "utils.Dump"
 ---Module for handling Il2Cpp class operations and metadata
-local Class = {}
+local Class = {
+    ---Cache for class information checks
+    IsClassCache = {},
+    
+    ---Name offset based on platform architecture
+    NameOffset = (Il2Cpp.x64 and 0x10 or 0x8),
+}
 
 ---Get the name of a class, handling generic classes with type parameters
 -- @param klass table The class object
@@ -210,8 +217,6 @@ function Class.GetPointersToIndex(index)
     return Il2Cpp.GetPtr(Il2Cpp.typeDef + (index * Il2Cpp.pointSize))
 end
 
----Cache for class information checks
-Class.IsClassCache = {}
 
 ---Check if an address points to valid class information
 -- @param Address number Memory address to check
@@ -245,11 +250,6 @@ function Class:GetTypeDef()
     return self.typeDefinition or self.typeMetadataHandle
 end 
 
----Name offset based on platform architecture
-Class.NameOffset = (Il2Cpp.x64 and 0x10 or 0x8)
-
----Cache for class objects
-Class.__cache = {}
 
 ---Create a class object from address, name, or index
 -- @param searchParams table|string|number Address, name, or index of the class
@@ -257,7 +257,7 @@ Class.__cache = {}
 -- @return table Class object or array of class objects
 function Class:From(searchParams, addList)
     --Il2Cpp.log:debug("Class:", searchParams)
-    if self.__cache[searchParams] then return self.__cache[searchParams] end
+    if Il2Cpp.__cache.Class[searchParams] then return Il2Cpp.__cache.Class[searchParams] end
     
     local klass = {}
     if type(searchParams) == "string" or type(searchParams) == "table" then
@@ -286,12 +286,13 @@ function Class:From(searchParams, addList)
             __name = (kls.namespaze ~= "" and kls.namespaze .. "." or "") .. kls.name
         })
     end
-    self.__cache[searchParams] = #klass == 1 and klass[1] or klass
-    return self.__cache[searchParams]
+    --self.__cache[searchParams] = #klass == 1 and klass[1] or klass
+    Il2Cpp.__cache.Class[searchParams] = klass
+    return klass
 end
 
 function Class.Dump(klass, config)
-    return Il2Cpp.Dump(klass, config)
+    return Dump(klass, config)
 end
 
 return setmetatable(Class, {

@@ -19,6 +19,7 @@ local function isImage(addr)
 end
 
 function Meta:init(globalMetadataHeader, Version)
+    local globalMetadataHeader = globalMetadataHeader or Il2Cpp.Meta.metaStart
     -- Validate metadata file
     local sanity = Il2Cpp.gV(globalMetadataHeader, 4)
     if sanity ~= -89056337 then

@@ -1,7 +1,6 @@
 ---@class Method
 ---Module for handling Il2Cpp method operations and metadata
-local Method = require "Hook"
-local Patch = require "Patch"
+local Method = require "utils.Hook"
 -- Version-specific constants for method parameter handling
 --Method.parameterStart = Il2Cpp.Version >= 31 and 16 or 12
 --Method.parameterSize = Il2Cpp.Version <= 24 and 16 or 12
@@ -16,7 +15,7 @@ function Method.GetName(method)
 end
 
 function Method.SetValue(method, value)
-    local func = Patch:setValues(method.methodPointer, value, method:GetReturnType().type)
+    local func = Il2Cpp.Patch:setValues(method.methodPointer, value, method:GetReturnType().type)
     function method.RestoreValue()
         func()
         method.RestoreValue = nil
@@ -242,6 +241,7 @@ end
 -- @param addList any Additional parameter (unused in current implementation)
 -- @return table Method object
 function Method:From(searchParams, addList)
+    if Il2Cpp.__cache.Method[searchParams] then return Il2Cpp.__cache.Method[searchParams] end
     local method = {}
     if type(searchParams) == "string" or type(searchParams) == "table" then
         local res = type(searchParams) == "table" and searchParams or Il2Cpp.Meta.GetPointersToString(searchParams)
@@ -269,7 +269,8 @@ function Method:From(searchParams, addList)
             __name = method.name
         })
     end
-    return #method == 1 and method[1] or method
+    Il2Cpp.__cache.Method[searchParams] = method
+    return method--#method == 1 and method[1] or method
 end
 
 

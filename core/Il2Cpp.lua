@@ -1,12 +1,13 @@
 ---@class Il2Cpp
 ---Main Il2Cpp module providing core functionality and type definitions
-local AndroidInfo = require "Androidinfo"
+local AndroidInfo = require "utils.Androidinfo"
 local x64 = AndroidInfo.platform
 local pointer = x64 and gg.TYPE_QWORD or gg.TYPE_DWORD
 local MainType = pointer
 local pointSize = x64 and 8 or 4
-local Struct = require "Struct"
-local Version = require "Version"
+local Struct = require "core.Struct"
+local Version = require "core.Version"
+local Config = require "config"
 
 -- Utility function to simulate Linq.ToDictionary
 function table.toDictionary(array, keySelector)
@@ -40,7 +41,16 @@ Il2Cpp = {
     methodSpecGenericMethodPointers = {},
     methodDefinitionMethodSpecs = {},
     genericMethodPointers = {},
-    Info = AndroidInfo
+    Info = AndroidInfo,
+    
+    __cache = {
+        Class = {},
+        Field = {},
+        Method = {},
+        Param = {},
+        Type = {},
+        Utf8ToString = {}
+    }
 }
 
 ---@class TypeInfo
@@ -137,16 +147,14 @@ function Il2Cpp.align(offset, align_to)
     return ((offset + align_to - 1) / align_to) * align_to
 end
 
----Cache for UTF-8 string conversion
-local Utf8ToStringCache = {}
 
 ---Convert UTF-8 encoded memory to string
 -- @param Address number Memory address of UTF-8 string
 -- @param length number|nil Length of string (optional, if not provided reads until null terminator)
 -- @return string Decoded string
 Il2Cpp.Utf8ToString = function(Address, length)
-    if not length and Utf8ToStringCache[Address] then
-        return Utf8ToStringCache[Address]
+    if not length and Il2Cpp.__cache.Utf8ToString[Address] then
+        return Il2Cpp.__cache.Utf8ToString[Address]
     end
     local chars, char = {}, {
         address = Address,
@@ -160,7 +168,7 @@ Il2Cpp.Utf8ToString = function(Address, length)
             if string.find(_char, "[%z%s]") then break end
         end
         local Text = table.concat(chars, "", 1, #chars - 1)
-        Utf8ToStringCache[Address] = Text
+        Il2Cpp.__cache.Utf8ToString[Address] = Text
         return Text
     else
         for i = 1, length do
@@ -169,7 +177,6 @@ Il2Cpp.Utf8ToString = function(Address, length)
             char.address = char.address + 0x1
         end
         local Text = table.concat(chars)
-        --Utf8ToStringCache[Address] = Text
         return Text
     end
 end
@@ -519,7 +526,7 @@ end
 Il2Cpp.log = {
     results = {},
     level = {},
-    name = "Il2CppGG",
+    name = Config.name,
     debug = function(self, ...)
         if self.level.DEBUG then 
             self:log(string.format(self.name .. ": [%s] " ..  ..., "Debug"))
@@ -684,17 +691,16 @@ return setmetatable(Struct, {
       
         -- Load all Il2Cpp API modules
         local api = {
-            Meta = require "Meta",
-            Class = require "Class",
-            Field = require "Field",
-            Method = require "Method",
-            Param = require "Param",
-            Object = require "Object",
-            Image = require "Image",
-            Type = require "Type",
-            Dump = require "Dump",
-            Patch = require "Patch",
-            Universalsearcher = require "Universalsearcher"
+            Patch = require "utils.Patch",
+            Meta = require "core.Meta",
+            Searcher = require "core.Universalsearcher",
+            Class = require "api.Class",
+            Field = require "api.Field",
+            Method = require "api.Method",
+            Param = require "api.Param",
+            Object = require "api.Object",
+            Image = require "api.Image",
+            Type = require "api.Type"
         }
         
         return setmetatable(api, {

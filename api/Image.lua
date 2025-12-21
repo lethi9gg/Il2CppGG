@@ -7,6 +7,9 @@ local Image = {}
 -- @return table Image object or table of all images
 function Image:From(name)
     if not self.__cache then
+        if not Il2Cpp.imageSize then
+            Il2Cpp.Meta()
+        end
         local typeStart = 0
         local addr = Il2Cpp.imageDef
         local typeCountOffset = gg.getValues({{address = addr + (Il2Cpp.pointSize * 3), flags = 4}})[1].value == 0 and (Il2Cpp.pointSize * 3) + 4 or Il2Cpp.pointSize * 3
@@ -14,9 +17,11 @@ function Image:From(name)
         for i = 1, Il2Cpp.imageCount do
             local imageInfo = gg.getValues({
                 {address = addr, flags = Il2Cpp.MainType},
-                {address = addr + typeCountOffset, flags = 4},
-                {address = addr + (Il2Cpp.pointSize * 2), flags = Il2Cpp.MainType}
+                {address = addr + typeCountOffset, flags = 4}, -- typeCount
+                {address = addr + (Il2Cpp.pointSize * 2), flags = Il2Cpp.MainType}, -- assembly
+                {address = addr + typeCountOffset + (Il2Cpp.pointSize * 5), flags = 4} -- token
             })
+            
             local name = Il2Cpp.Utf8ToString(Il2Cpp.FixValue(imageInfo[1].value))
             local check = string.find(name, ".-%.dll") or string.find(name, "__Generated")
             if not check then
@@ -28,7 +33,8 @@ function Image:From(name)
                 typeCount = imageInfo[2].value,
                 typeStart = typeStart,
                 name = name,
-                assembly = imageInfo[3].value
+                assembly = imageInfo[3].value,
+                token = imageInfo[4].value
             }, {__index = Image})
             typeStart = typeStart + imageInfo[2].value
             addr = addr + Il2Cpp.imageSize

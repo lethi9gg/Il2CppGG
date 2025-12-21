@@ -14,6 +14,10 @@ local AndroidInfo = {
     ---@field pkg string Package name of the target application
     pkg = gg.getTargetPackage(),
     
+    name = info.name,
+    
+    targetInfo = info,
+    
     ---@field path string Cache path for the application with format: 
     -- "/cache/packageName-versionCode-architecture(64/32)"
     path = gg.EXT_CACHE_DIR .. "/" .. info.packageName .. "-" .. info.versionCode .. "-" .. (info.x64 and "64" or "32")

@@ -1,20 +1,19 @@
 ---@class Type
 ---Module for handling Il2Cpp type operations and metadata
-local Type = {__cache = {}}
+local Type = {}
 
 ---Create a Type object from memory address or index
--- @param address number Memory address or type index
+-- @param searchParams number Memory address or type index
 -- @return table Type object with metadata
-function Type:From(address)
-    --print(Type.typeCount, address )
-    local address = Il2Cpp.FixValue(address)
-    if Type.typeCount >= address then -- if it's an index
-        address = Il2Cpp.gV(Type.type + (address * Il2Cpp.pointSize), Il2Cpp.pointer)
+function Type:From(searchParams)
+    local searchParams = Il2Cpp.FixValue(searchParams)
+    if Type.typeCount >= searchParams then -- if it's an index
+        searchParams = Il2Cpp.gV(Type.type + (searchParams * Il2Cpp.pointSize), Il2Cpp.pointer)
     end
-    if self.__cache[address] then return self.__cache[address] end
-    local typeStruct = Il2Cpp.Il2CppType(address)
+    if Il2Cpp.__cache.Type[searchParams] then return Il2Cpp.__cache.Type[searchParams] end
+    local typeStruct = Il2Cpp.Il2CppType(searchParams)
     typeStruct:Init()
-    typeStruct.address = address
+    typeStruct.address = searchParams
     
     if Il2Cpp.Meta.Obf and not Il2Cpp.Meta.Header.genericParameters and Type.IsGenericParameter(typeStruct) then
         Il2Cpp.Meta.Header.genericParameters = typeStruct.data
@@ -25,7 +24,7 @@ function Type:From(address)
         __tostring = Type.ToString,
         __name = "Type"
     })
-    self.__cache[address] = types
+    Il2Cpp.__cache.Class[searchParams] = types
     return types
 end
 
@@ -132,21 +131,21 @@ end
 
 function Type.GetSimpleName(typeStruct)
     local basicTypes = {
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VOID] = "Void",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_BOOLEAN] = "Boolean",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_CHAR] = "Char",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I1] = "SByte",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U1] = "Byte",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I2] = "Int16",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U2] = "UInt16",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I4] = "Int32",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U4] = "UInt32",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I8] = "Int64",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U8] = "UInt64",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_R4] = "Single",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_R8] = "Double",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_STRING] = "String",
-        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_OBJECT] = "Object",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_VOID] = "void",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_BOOLEAN] = "bool",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_CHAR] = "char",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I1] = "sbyte",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U1] = "byte",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I2] = "short",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U2] = "ushort",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I4] = "int",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U4] = "uint",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_I8] = "long",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_U8] = "ulong",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_R4] = "float",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_R8] = "double",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_STRING] = "string",
+        [Il2Cpp.Il2CppTypeEnum.IL2CPP_TYPE_OBJECT] = "object",
     }
     local TypeString = {
         [1] = "void",
@@ -241,7 +240,7 @@ function Type.GetName(typeStruct, addNamespaze)
             return baseName
         end
     end
-    error(typeStruct)
+    --error(typeStruct)
     return "Unknown"
 end
 

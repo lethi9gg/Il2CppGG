@@ -1,8 +1,8 @@
 ---@class Field
 ---Module for handling Il2Cpp field operations and metadata
-local Field = {}
-
-Field.DumpFieldValues = true
+local Field = {
+    DumpFieldValues = true
+}
 
 ---Get the name of a field
 -- @param field table The field object
@@ -213,6 +213,7 @@ end
 -- @param searchParams string|number|table Field name or address or table address
 -- @return table Field object or array of field objects
 function Field:From(searchParams)
+    if Il2Cpp.__cache.Field[searchParams] then return Il2Cpp.__cache.Field[searchParams] end
     local field = {}
     local typeSearchParams = type(searchParams)
     if typeSearchParams == "string" or typeSearchParams == "table" then
@@ -240,7 +241,8 @@ function Field:From(searchParams)
     else
         Il2Cpp.log:error("Il2Cpp.Field(searchParams): param searchParams string|number|table Field name or address or table address")
     end
-    return #field == 1 and field[1] or field
+    Il2Cpp.__cache.Field[searchParams] = field
+    return field--#field == 1 and field[1] or field
 end
 
 return setmetatable(Field, {

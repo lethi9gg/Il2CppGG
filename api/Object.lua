@@ -1,5 +1,3 @@
-local AndroidInfo = require("Androidinfo")
-
 ---@class ObjectApi
 ---Module for handling Il2Cpp object operations and memory management
 local ObjectApi = {
@@ -21,7 +19,7 @@ local ObjectApi = {
         Objects = FilterObjects
         gg.loadResults(Objects)
         gg.searchPointer(0)
-        if gg.getResultsCount() <= 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+        if gg.getResultsCount() <= 0 and Il2Cpp.Info.platform and Il2Cpp.Info.sdk >= 30 then
             local FixRefToObjects = {}
             for k, v in ipairs(Objects) do
                 gg.searchNumber(tostring(v.address | 0xB400000000000000), gg.TYPE_QWORD)
@@ -62,7 +60,7 @@ local ObjectApi = {
             flags = Il2Cpp.MainType
         }})
         gg.searchPointer(0)
-        if gg.getResultsCount() <= 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+        if gg.getResultsCount() <= 0 and Il2Cpp.Info.platform and Il2Cpp.Info.sdk >= 30 then
             gg.searchNumber(tostring(tonumber(ClassAddress) | 0xB400000000000000), gg.TYPE_QWORD)
         end
         local FindsResult = gg.getResults(gg.getResultsCount())

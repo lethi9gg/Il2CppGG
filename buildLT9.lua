@@ -1,13 +1,4 @@
-local modules = {
-   name = "Il2CppGG",
-   version = '1.0.4',
-   author = "LeThi9GG",
-   
-   build = {
-      input = "init",
-      output = "build/Il2CppGG.lua", -- nil then output = Name + build.lua
-   }
-}
+local modules = require "config"
 
 local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (function(superRequire)
 	local loadingPlaceholder = {[{}] = true}

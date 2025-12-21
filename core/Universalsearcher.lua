@@ -1,7 +1,3 @@
-local AndroidInfo = require "Androidinfo"
-local MainType = AndroidInfo.platform and gg.TYPE_QWORD or gg.TYPE_DWORD
-local pointSize = AndroidInfo.platform and 8 or 4
-
 ---@class Searcher
 ---Universal searcher module for locating Il2Cpp and metadata components in memory
 local Searcher = {
@@ -145,7 +141,7 @@ local Searcher = {
     	    gg.searchNumber(config.address, Il2Cpp.MainType, nil, nil, config.startAddrs, config.endAddrs, config.endResults);
     	    
     	    -- Handle 64-bit Android SDK 30+ special case
-    	    if gg.getResultsCount() == 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+    	    if gg.getResultsCount() == 0 and Il2Cpp.Info.platform and Il2Cpp.Info.sdk >= 30 then
                 gg.searchNumber(tostring(config.address | 0xB400000000000000), Il2Cpp.MainType, nil, nil, config.startAddrs, config.endAddrs, config.endResults);
             end
             
@@ -163,8 +159,8 @@ local Searcher = {
         
         
         -- Set pointer sizes based on version and platform
-        Il2Cpp.classPointer = Il2Cpp.Version < 27 and (AndroidInfo.platform and 24 or 12) or (AndroidInfo.platform and 40 or 20);
-        --Il2Cpp.imagePointer = Il2Cpp.Version < 27 and (AndroidInfo.platform and 72 or 36) or (AndroidInfo.platform and 24 or 12);
+        Il2Cpp.classPointer = Il2Cpp.Version < 27 and (Il2Cpp.Info.platform and 24 or 12) or (Il2Cpp.Info.platform and 40 or 20);
+        --Il2Cpp.imagePointer = Il2Cpp.Version < 27 and (Il2Cpp.Info.platform and 72 or 36) or (Il2Cpp.Info.platform and 24 or 12);
         
         -- Get global metadata range
         local gmt = gg.getRangesList("global-metadata.dat");
@@ -174,7 +170,7 @@ local Searcher = {
         gg.clearResults();
 	    gg.setRanges(gg.REGION_C_BSS | gg.REGION_ANONYMOUS | gg.REGION_OTHER);
 	    gg.searchNumber(gmt, Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
-	    if gg.getResultsCount() == 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+	    if gg.getResultsCount() == 0 and Il2Cpp.Info.platform and Il2Cpp.Info.sdk >= 30 then
             gg.searchNumber(tostring(gmt | 0xB400000000000000), Il2Cpp.MainType, nil, nil, Il2Cpp.il2cppStart, -1, 1);
         end
         local t = gg.getResults(1)
@@ -313,10 +309,10 @@ local Searcher = {
         
         --[[
         if (Il2Cpp.Version < 27) then
-            Il2Cpp.stringDef = Il2Cpp.FixValue(Il2Cpp.GetPtr(Il2Cpp.imageDef + ((AndroidInfo.platform and 8) or 0)));
+            Il2Cpp.stringDef = Il2Cpp.FixValue(Il2Cpp.GetPtr(Il2Cpp.imageDef + ((Il2Cpp.Info.platform and 8) or 0)));
             return
         else
-            address = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.imageDef) + (AndroidInfo.platform and 16 or 8)) + (AndroidInfo.platform and 24 or 16);
+            address = Il2Cpp.GetPtr(Il2Cpp.GetPtr(Il2Cpp.imageDef) + (Il2Cpp.Info.platform and 16 or 8)) + (Il2Cpp.Info.platform and 24 or 16);
         end
         Il2Cpp.stringDef = Il2Cpp.GetPtr(address);
         ]]

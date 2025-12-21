@@ -1,10 +1,38 @@
 ---@module Il2Cpp
+--[[
+Il2CppGG/
+├── core/
+│   ├── Il2Cpp.lua (Core module, handles versioning and utilities)
+│   ├── Struct.lua (Defines version-specific Il2Cpp structures)
+│   ├── Version.lua (Version detection and structure selection)
+│   ├── Universalsearcher.lua (Module for locating metadata and key pointers)
+│   └── Meta.lua (Module for Il2Cpp metadata)
+├── api/
+│   ├── Class.lua (Module for Il2Cpp classes)
+│   ├── Field.lua (Module for Il2Cpp fields)
+│   ├── Method.lua (Module for Il2Cpp methods)
+│   ├── Type.lua (Module for Il2Cpp types)
+│   ├── Image.lua (Module for Il2Cpp images/assemblies)
+│   ├── Object.lua (Module for memory object manipulation)
+│   └── Param.lua (Parameter operations module)
+├── utils/
+│   ├── Androidinfo.lua (Helper for Android device information)
+│   ├── Hook.lua (Memory hooking for modification and reverse engineering)
+│   ├── Patch.lua (Memory Patch)
+│   └── Dump.lua (Class dumping to C# format)
+├── build/
+│   └── Il2CppGG.lua (Bundled, production-ready script)
+├── buildLT9.lua (Build script to bundle modules)
+├── init.lua (Entry point for development)
+└── test.lua (Usage examples for hooking and dumping)
+]]
+
 Il2Cpp = function(config)
     local _path, config = package.path, config or {}
     package.path = gg.getFile():match("(.*[/%\\])") .. "?.lua;" .. package.path;
     
     ---Main initialization module for Il2Cpp framework
-    Il2Cpp = require "Il2Cpp"()
+    Il2Cpp = require "core.Il2Cpp"()
     
     package.path = _path
     
@@ -15,7 +43,7 @@ Il2Cpp = function(config)
     Il2Cpp.log:info("Initializing il2cpp ...")
     local il2cppStart, il2cppEnd = config.il2cppStart, config.il2cppEnd
     if not il2cppStart and not il2cppEnd then
-        il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher.FindIl2cpp()
+        il2cppStart, il2cppEnd = Il2Cpp.Searcher.FindIl2cpp()
     end
     Il2Cpp.il2cppStart = il2cppStart
     Il2Cpp.il2cppEnd = il2cppEnd
@@ -27,16 +55,16 @@ Il2Cpp = function(config)
     Il2Cpp.log:info("Initializing metadata...")
     local metaStart, metaEnd = config.metaStart, config.metaEnd
     if not metaStart and not metaEnd then
-        metaStart, metaEnd = Il2Cpp.Universalsearcher:FindGlobalMetaData()
+        metaStart, metaEnd = Il2Cpp.Searcher:FindGlobalMetaData()
     end
-    Il2Cpp.Universalsearcher:Il2CppMetadataRegistration(metaStart)
+    Il2Cpp.Searcher:Il2CppMetadataRegistration(metaStart)
     Il2Cpp.Meta.metaStart = metaStart
     Il2Cpp.Meta.metaEnd = metaEnd
     Il2Cpp.Meta(metaStart, Il2Cpp.Version)
     Il2Cpp.log:info("Metadata Version: " .. Il2Cpp.Meta.Version)
     Il2Cpp.log:info("Metadata Start Address: " .. Il2Cpp.ToHex(metaStart))
     
-    local il2cppStart, il2cppEnd = Il2Cpp.Universalsearcher.FindIl2cpp(Il2Cpp.metaReg)
+    local il2cppStart, il2cppEnd = Il2Cpp.Searcher.FindIl2cpp(Il2Cpp.metaReg)
     Il2Cpp.il2cppStart = il2cppStart
     Il2Cpp.il2cppEnd = il2cppEnd
     
