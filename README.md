@@ -1,10 +1,9 @@
 # Il2CppGG
 
-[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/lethi9gg/Il2CppGG)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/lethi9gg/Il2CppGG/blob/main/LICENSE)
-[![Platform](https://img.shields.io/badge/platform-GameGuardian-orange.svg)](https://gameguardian.net/)
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?&logo=telegram&logoColor=white)](https://t.me/lethi9ggg)
 [![GameGuardian](https://img.shields.io/badge/GameGuardian-7c36b1)](https://gameguardian.net/forum/files/file/4316-il2cppgg)
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?&logo=telegram&logoColor=white)](https://t.me/lethi9ggg)
+
 
 **Il2CppGG** is a powerful Lua-based framework designed specifically for GameGuardian, tailored for working with Unity games that utilize the Il2Cpp backend. The framework offers comprehensive tools for metadata analysis, class/field/method searching, memory modification, advanced hooking, and dumping code in C# format.
 
