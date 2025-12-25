@@ -1,5 +1,6 @@
 -- Il2CppGG by LeThi9GG
 gg.alert("Script test Il2CppGG by LeThi9GG\n\nGame test: Zombie cubes 2\n\n", "", "")
+-- io.open("Il2CppGG.lua", "w"):write(gg.makeRequest(gg.makeRequest("https://github.com/lethi9gg/Il2CppGG/releases/latest").content:match("app%-argument=(.-)\""):gsub("tag", "download") .. "/Il2CppGG.lua").content):close(); require"Il2CppGG"
 require("init") -- or build.Il2CppGG
 Il2Cpp({
     log = {
