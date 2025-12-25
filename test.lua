@@ -15,7 +15,7 @@ local Assembly = Il2Cpp.Image("Assembly-CSharp") -- Get all images Il2Cpp.Image(
 local PlayerScript = Assembly:Class(nil, "PlayerScript") -- (namespace, classname)
 
 -- Tìm Class Theo (ClassInfoAddress, Tên, Index) (Gợi Ý Dùng GetIndex() Để Lấy Index Của Class Nó Sẽ Nhanh Hơn Rất Nhiều)
---local PlayerScript = Il2Cpp.Class("PlayerScript")
+--local PlayerScript = Il2Cpp.Class("PlayerScript")[1]
 --print(PlayerScript:GetIndex())
 
 -- Tìm Method Trong Class Bằng Tên Hoặc GetMethods() Tất Cả Method
