@@ -98,7 +98,7 @@ Il2Cpp.TypeFlag = {
 function Il2Cpp.GetTypeToFlags(types)
     if types == 2 then 
         menu_item = 1
-    elseif types >= 4 and 9 <= types then 
+    elseif types >= 4 and types <= 9 then
         menu_item = 2 
     elseif types == 12 then 
         menu_item = 3
@@ -165,7 +165,7 @@ Il2Cpp.Utf8ToString = function(Address, length)
             _char = string.char(gg.getValues({char})[1].value & 0xFF)
             chars[#chars + 1] = _char
             char.address = char.address + 0x1
-            if string.find(_char, "[%z%s]") then break end
+            if string.find(_char, "%z") then break end
         end
         local Text = table.concat(chars, "", 1, #chars - 1)
         Il2Cpp.__cache.Utf8ToString[Address] = Text
@@ -221,10 +221,15 @@ function Il2Cpp.classGG(fields, version)
             if (v and #v == 0) and (version < (v.min or 0) or version > (v.max or 99)) then
                 includeField = false
             elseif v and #v > 0 then
+                local inAnyRange = false
                 for _, attr in ipairs(v) do
-                    if (version < (attr.min or 0) or version > (attr.max or 99)) then
-                        includeField = false
+                    if version >= (attr.min or 0) and version <= (attr.max or 99) then
+                        inAnyRange = true
+                        break
                     end
+                end
+                if not inAnyRange then
+                    includeField = false
                 end
             end
         end
@@ -598,7 +603,7 @@ function Il2Cpp:Dumper(config, target, callback)
     output:close()
     local dumpTimeDiff = os.time() - startTime;
 	self.log:info(string.format("Dumper Done in %.2f seconds", dumpTimeDiff));
-    return path
+    return target.path
 end
 
 function Il2Cpp:searchName(searchParams, config)
