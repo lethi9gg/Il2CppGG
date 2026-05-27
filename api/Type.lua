@@ -24,7 +24,7 @@ function Type:From(searchParams)
         __tostring = Type.ToString,
         __name = "Type"
     })
-    Il2Cpp.__cache.Class[searchParams] = types
+    Il2Cpp.__cache.Type[searchParams] = types
     return types
 end
 

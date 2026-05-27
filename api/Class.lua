@@ -22,7 +22,7 @@ function Class.GetName(klass)
         local genericParameterStart = genericContainer.genericParameterStart
         local type_argc = {}
         for i = 1, genericContainer.type_argc do
-            local genericParameter = Il2Cpp.Meta:GetGenericParameter(genericParameterStart + i)
+            local genericParameter = Il2Cpp.Meta:GetGenericParameter(genericParameterStart + i - 1)
             type_argc[#type_argc+1] = Il2Cpp.Meta:GetStringFromIndex(genericParameter.nameIndex)
         end
         Name = Name .. "<" ..table.concat(type_argc, ", ") .. ">"

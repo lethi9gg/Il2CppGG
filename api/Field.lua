@@ -52,7 +52,7 @@ end
 -- @param field table The field object
 -- @return boolean True if the field is a normal static field
 function Field.IsNormalStatic(field)
-    if not bit32.band(field.type.attrs, 0x0010) then -- FIELD_ATTRIBUTE_STATIC
+    if bit32.band(field.type.attrs, 0x0010) == 0 then -- FIELD_ATTRIBUTE_STATIC
         return false
     end
     if field.offset == -1 then -- THREAD_STATIC_FIELD_OFFSET

@@ -481,7 +481,7 @@ end
 function Meta:GetGenericContainerParams(genericContainer)
     local genericParameterNames = {}
     for i = 1, genericContainer.type_argc do
-        local genericParameterIndex = genericContainer.genericParameterStart + i
+        local genericParameterIndex = genericContainer.genericParameterStart + i - 1
         local genericParameter = self:GetGenericParameter(genericParameterIndex)
         genericParameterNames[i] = self:GetStringFromIndex(genericParameter.nameIndex)
     end
