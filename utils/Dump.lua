@@ -98,10 +98,10 @@ function Dump(typeDef, config)
             local propertyName = propertyDef.name
             local propertyTypeName = tostring(propertyType)
             local accessors = {}
-            if propertyDef.get >= 0 then
+            if propertyDef.get > 0 then
                 table.insert(accessors, "get; ")
             end
-            if propertyDef.set >= 0 then
+            if propertyDef.set > 0 then
                 table.insert(accessors, "set; ")
             end
             table.insert(output, string.format("\t%s%s %s { %s}", modifiers, propertyTypeName, propertyName, table.concat(accessors)))
